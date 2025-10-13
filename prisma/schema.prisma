@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  PATIENT
+  DOCTOR
+  PHARMACY
+  HOSPITAL
+  ADMIN
+}
+
+model Appointment {
+  id        String            @id @default(cuid())
+  slotId    String
+  patientId String
+  status    AppointmentStatus @default(PENDING)
+  notes     String?
+  createdAt DateTime          @default(now())
+
+  AvailabilitySlot AvailabilitySlot[]
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  NO_SHOW
+}
+
+model Pharmacy {
+  id       String    @id @default(cuid())
+  name     String
+  city     String
+  open     Boolean   @default(true)
+  products Product[]
+  orders   Order[] // optional, if you use orders
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  pharmacyId  String
+  pharmacy    Pharmacy    @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  patientId   String
+  totalAmount Decimal     @db.Decimal(10, 2)
+  status      OrderStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+model Product {
+  id                   String     @id @default(cuid())
+  pharmacyId           String
+  pharmacy             Pharmacy   @relation(fields: [pharmacyId], references: [id], onDelete: Cascade)
+  name                 String
+  sku                  String     @unique
+  price                Decimal    @db.Decimal(10, 2)
+  prescriptionRequired Boolean    @default(false)
+  inventory            Inventory?
+}
+
+model Inventory {
+  id        String   @id @default(cuid())
+  productId String   @unique
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+model AvailabilitySlot {
+  id           String        @id @default(cuid())
+  ownerType    OwnerType
+  ownerId      String
+  start        DateTime
+  end          DateTime
+  capacity     Int           @default(1)
+  status       SlotStatus    @default(ACTIVE)
+  appointments Appointment[]
+}
+
+enum OwnerType {
+  DOCTOR
+  HOSPITAL
+}
+
+enum SlotStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model Hospital {
+  id   String  @id @default(cuid())
+  name String
+  city String
+  open Boolean @default(true)
+}
