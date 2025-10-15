@@ -2,11 +2,11 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 RUN corepack enable
-COPY pnpm-lock.yaml package.json ./     
-COPY ./package.json ./
-COPY ./tsconfig*.json ./
-COPY ./nest-cli.json ./    
-COPY ./prisma ./prisma
+COPY package.json ./     
+COPY package.json ./
+COPY tsconfig*.json ./
+COPY nest-cli.json ./    
+COPY prisma ./prisma
 RUN pnpm install --frozen-lockfile
 
 # ---- build
