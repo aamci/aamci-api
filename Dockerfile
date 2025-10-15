@@ -2,6 +2,7 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
+COPY docker-entrypoint.sh ./
 RUN npm install      # 👈 instead of npm ci
 
 # ---------- build ----------
@@ -21,4 +22,5 @@ COPY --from=build /app/prisma ./prisma
 COPY --from=deps /app/node_modules ./node_modules
 COPY package*.json ./
 EXPOSE 3000
-CMD ["node", "dist/main.js"]
+RUN chmod +x docker-entrypoint.sh
+ENTRYPOINT ["./docker-entrypoint.sh"]
