@@ -1,19 +1,34 @@
+# ---- base: deps install
 FROM node:20-alpine AS deps
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
-COPY package.json pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile || pnpm install
+RUN corepack enable
+COPY pnpm-lock.yaml package.json ./     
+COPY apps/api/package.json ./apps/api/
+COPY apps/api/tsconfig*.json ./apps/api/
+COPY apps/api/nest-cli.json ./apps/api/    
+COPY apps/api/prisma ./apps/api/prisma
+RUN pnpm install --frozen-lockfile
+
+# ---- build
 FROM node:20-alpine AS build
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+RUN corepack enable
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN pnpm build
-FROM node:20-alpine AS prod
-WORKDIR /app
+RUN pnpm -C apps/api prisma generate
+RUN pnpm -C apps/api build                  # -> apps/api/dist/main.js
+
+# ---- runtime
+FROM node:20-alpine AS runner
+WORKDIR /app/apps/api
 ENV NODE_ENV=production
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY .env .env
-EXPOSE 3001
-CMD ["node","dist/main.js"]
+# copy built dist and production node_modules for the app scope
+COPY --from=build /app/apps/api/dist ./dist
+COPY --from=deps  /app/node_modules ./node_modules
+COPY --from=build /app/apps/api/package.json ./package.json
+COPY --from=build /app/apps/api/prisma ./prisma
+
+# optional: run migrations on start
+# CMD ["sh", "-lc", "node dist/main.js"]
+CMD ["node", "dist/main.js"]
+EXPOSE 3000
