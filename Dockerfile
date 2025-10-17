@@ -23,5 +23,6 @@ COPY package*.json ./
 # entrypoint
 COPY docker-entrypoint.sh ./docker-entrypoint.sh  
 EXPOSE 3000
+EXPOSE 6543
 RUN chmod +x docker-entrypoint.sh
 ENTRYPOINT ["./docker-entrypoint.sh"]
