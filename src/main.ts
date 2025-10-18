@@ -5,6 +5,14 @@ import { exec } from 'child_process';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const origins = [
+  'http://localhost:3001',
+  'https://web-patient.onrender.com',   // 👈 ton front Render
+];
+  app.enableCors({
+    origin: (origin, cb) => cb(null, !origin || origins.includes(origin)),
+    credentials: true,
+  });
   const port = Number(process.env.PORT) || 3000;
   await app.listen(port, '0.0.0.0');
   console.log(`🚀 Listening on ${port}`);
