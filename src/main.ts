@@ -7,6 +7,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const origins = [
   'http://localhost:3001',
+  'https://web-patient-teal.vercel.app',
   'https://web-patient.onrender.com',   // 👈 ton front Render
 ];
   app.enableCors({
