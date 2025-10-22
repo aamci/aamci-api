@@ -7,11 +7,13 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const origins = [
   'http://localhost:3001',
-  'https://web-patient-teal.vercel.app',
+  'https://web-doctor-p93i.onrender.com',
   'https://web-patient.onrender.com',   // 👈 ton front Render
 ];
   app.enableCors({
     origin: (origin, cb) => cb(null, !origin || origins.includes(origin)),
+    methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+    allowedHeaders: ['Content-Type','Authorization'],
     credentials: true,
   });
   const port = Number(process.env.PORT) || 3000;
