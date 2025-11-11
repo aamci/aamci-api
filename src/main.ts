@@ -2,11 +2,12 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { exec } from 'child_process';
+import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const origins = [
-  'http://localhost:3001',
+  'http://localhost:3000',
   'https://web-doctor-p93i.onrender.com',
   'https://web-patient.onrender.com',   // 👈 ton front Render
 ];
@@ -16,6 +17,9 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type','Authorization'],
     credentials: true,
   });
+  //app.use(bodyParser.json({ limit: '10mb' }));
+  //app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
+
   const port = Number(process.env.PORT) || 3000;
   await app.listen(port, '0.0.0.0');
   console.log(`🚀 Listening on ${port}`);

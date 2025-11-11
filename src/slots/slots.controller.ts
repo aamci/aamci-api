@@ -1,0 +1,88 @@
+// src/slots/slots.controller.ts
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Req,
+  UseGuards,
+  UnauthorizedException,
+  Query,
+} from '@nestjs/common';
+import { SlotsService } from './slots.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+
+@Controller('slots')
+//@UseGuards(JwtAuthGuard)
+export class SlotsController {
+  constructor(private readonly slots: SlotsService) {}
+
+  private getUserId(req: any): string {
+    return req.user?.id || req.user?.userId; // ✅ on tolère les deux
+  }
+
+    @Get()
+  async list(@Query('ownerId') ownerId?: string) {
+    if (!ownerId) {
+      // Si pas d’ownerId -> retourne rien, pas une erreur
+      return [];
+    }
+    return this.slots.findAllPublic(ownerId);
+  }
+
+  // 👉 version sécurisée (doctor connecté)
+  @Get('mine')
+  @UseGuards(JwtAuthGuard)
+  async mySlots(@Req() req) {
+    const userId = req.user.id || req.user.userId;
+    return this.slots.findAllByOwner(userId);
+  }
+
+  // @Get()
+  // async list(@Req() req) {
+  //   const userId = this.getUserId(req);
+  //   if (!userId) throw new UnauthorizedException();
+  //   return this.slots.findAllByOwner(userId);
+  // }
+
+  @Post()
+  async create(@Req() req, @Body() dto: any) {
+    const userId = this.getUserId(req);
+    if (!userId) throw new UnauthorizedException('Utilisateur non authentifié');
+
+    return this.slots.create({
+      ownerId: userId,
+      ownerType: req.user.role === 'HOSPITAL' ? 'HOSPITAL' : 'DOCTOR',
+      start: dto.start,
+      end: dto.end,
+      capacity: dto.capacity ?? 1,
+      status: dto.status ?? 'ACTIVE',
+    });
+  }
+
+    @Post('bulk')
+  @UseGuards(JwtAuthGuard)
+  async bulkCreate(@Req() req, @Body() body: { slots: Array<{ start: string; end: string; capacity?: number; status?: string }> }) {
+    const userId = req.user.id || req.user.userId;
+    if (!userId) throw new UnauthorizedException('Utilisateur non authentifié');
+
+    return this.slots.bulkCreate(userId, body.slots || []);
+  }
+
+  @Put(':id')
+  async update(@Req() req, @Param('id') id: string, @Body() dto: any) {
+    const userId = this.getUserId(req);
+    if (!userId) throw new UnauthorizedException();
+    return this.slots.update(id, userId, dto);
+  }
+
+  @Delete(':id')
+  async remove(@Req() req, @Param('id') id: string) {
+    const userId = this.getUserId(req);
+    if (!userId) throw new UnauthorizedException();
+    return this.slots.remove(id, userId);
+  }
+}

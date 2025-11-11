@@ -6,105 +6,157 @@ import * as argon2 from 'argon2';
 const prisma = new PrismaClient();
 
 async function main() {
-  // 1) common password hash for all dummy users
-  const hash = await argon2.hash('password123');
+  // 1) mot de passe commun
+  const passwordHash = await argon2.hash('password123');
 
-  // 2) 10 patients (bulk) — createMany returns count, not rows
+  // 2) créer 8 patients
   await prisma.user.createMany({
-    data: Array.from({ length: 10 }).map(() => ({
+    data: Array.from({ length: 8 }).map(() => ({
       email: faker.internet.email().toLowerCase(),
-      password: hash,
-      role: 'PATIENT', // enum literal is fine
+      password: passwordHash,
+      role: 'PATIENT',
+      fullName: faker.person.fullName(),
+      city: faker.location.city(),
     })),
     skipDuplicates: true,
   });
 
-  // 3) one doctor we can reference later (needs an id)
-  const doctor = await prisma.user.create({
-    data: {
-      email: faker.internet.email().toLowerCase(),
-      password: hash,
-      role: 'DOCTOR',
-    },
-  });
-
-  // (optional) more doctors
-  await prisma.user.createMany({
-    data: Array.from({ length: 5 }).map(() => ({
-      email: faker.internet.email().toLowerCase(),
-      password: hash,
-      role: 'DOCTOR',
-    })),
-    skipDuplicates: true,
-  });
-
-  // 4) pick any patient to use for the appointment
-  const anyPatient = await prisma.user.findFirst({
+  // on récupère un patient pour lier les rendez-vous
+  const patient = await prisma.user.findFirst({
     where: { role: 'PATIENT' },
     orderBy: { createdAt: 'asc' },
   });
-  if (!anyPatient) throw new Error('No patient found after seeding users');
+  if (!patient) {
+    throw new Error('No patient created — cannot continue seeding.');
+  }
 
-  // 5) create a slot for the doctor
+  // 3) créer quelques DOCTOR avec leur profil
+  const doctor1 = await prisma.user.create({
+    data: {
+      email: 'cardio.paris@sante.test',
+      password: passwordHash,
+      role: 'DOCTOR',
+      fullName: 'Dr Amélie Dupont',
+      city: 'Paris',
+      avatarUrl: null,
+    },
+  });
+
+  await prisma.doctorProfile.create({
+    data: {
+      userId: doctor1.id,
+      specialty: 'Cardiologie',
+      hospitalType: 'Clinique privée',
+      address: '12 rue de la Santé, 75013 Paris',
+      city: 'Paris',
+      presentation: 'Cardiologue depuis 12 ans, spécialisée en prévention cardiovasculaire.',
+      formations: 'DES Cardiologie (Paris); Diplôme d’échographie cardiaque',
+      experiences: 'CHU Saint-Louis (5 ans); Cabinet privé (7 ans)',
+    },
+  });
+
+  const doctor2 = await prisma.user.create({
+    data: {
+      email: 'derm.lyon@sante.test',
+      password: passwordHash,
+      role: 'DOCTOR',
+      fullName: 'Dr B. Martin',
+      city: 'Lyon',
+    },
+  });
+
+  await prisma.doctorProfile.create({
+    data: {
+      userId: doctor2.id,
+      specialty: 'Dermatologie',
+      hospitalType: 'Cabinet',
+      address: '4 place Bellecour, 69002 Lyon',
+      city: 'Lyon',
+      presentation: 'Dermatologue, prise en charge acné, suivi long terme.',
+      formations: 'DES Dermatologie (Lyon)',
+      experiences: 'Cabinet libéral (6 ans)',
+    },
+  });
+
+  // 4) créer un slot de dispo pour doctor1
+  const start = new Date();
+  start.setHours(start.getHours() + 2); // dans 2h
+  const end = new Date(start.getTime() + 30 * 60 * 1000); // +30min
+
   const slot = await prisma.availabilitySlot.create({
     data: {
+      ownerId: doctor1.id,
       ownerType: 'DOCTOR',
-      ownerId: doctor.id, // <-- we have the doctor id from the create() above
-      start: new Date(),
-      end: new Date(Date.now() + 60 * 60 * 1000),
+      start,
+      end,
       capacity: 1,
       status: 'ACTIVE',
     },
   });
+    const consultKind = await prisma.appointmentKind.findFirst({
+    where: { doctorId: null, name: 'Consultation' },
+  });
 
-  // 6) create an appointment for that patient and slot
   await prisma.appointment.create({
     data: {
       slotId: slot.id,
-      patientId: anyPatient.id, // <-- use an actual patient id
+      patientId: patient.id,
       status: 'PENDING',
-      notes: 'Consultation initiale',
+      kindId: consultKind ? consultKind.id : null,
     },
   });
-
-  // 7) pharmacy + product + inventory
-  const pharmacy = await prisma.pharmacy.create({
+  // 5) créer un appointment pour ce slot avec le patient
+  await prisma.appointment.create({
     data: {
-      name: 'Pharmacie Centrale',
-      city: 'Paris',
-      open: true,
+      slotId: slot.id,
+      patientId: patient.id,
+      status: 'PENDING',
+      type: 'PREMIERE_CONSULTATION', // ou 'CONSULTATION' selon ton enum
+      notes: 'Consultation de test (seed)',
     },
   });
 
-  const product = await prisma.product.create({
-    data: {
-      pharmacyId: pharmacy.id,
-      name: 'Doliprane 500mg',
-      sku: 'DOL500-' + faker.string.alphanumeric(6).toUpperCase(),
-      price: 3.5,
-      prescriptionRequired: false,
-      // (optional) if your schema has `inventory` relation:
-      // inventory: { create: { quantity: 150 } },
-    },
-  });
+// prisma/seed.ts (extrait à ajouter)
+const globalConsult = await prisma.appointmentKind.create({
+  data: {
+    name: 'Consultation',
+    description: 'Consultation standard 30 min',
+  },
+});
 
-  // If you don’t use nested create above, ensure Inventory model exists then:
-  await prisma.inventory.create({
-    data: {
-      productId: product.id,
-      quantity: 150,
-    },
-  });
+  const globalSuivi = await prisma.appointmentKind.create({
+  data: {
+    name: 'Suivi',
+    description: 'Rendez-vous de suivi',
+  },
+});
 
-  console.log('✅ Dummy data seeded successfully!');
+// pour le doctor1 (qu’on avait créé)
+await prisma.appointmentKind.create({
+  data: {
+    name: 'Consultation cardiologie',
+    description: 'Pour patients cardiaques connus',
+    doctorId: doctor1.id,
+  },
+});
+await prisma.appointment.create({
+  data: {
+    slotId: slot.id,
+    patientId: patient.id,
+    status: 'PENDING',
+    kindId: globalConsult.id, // use the global "Consultation" kind created above
+    notes: 'Consultation initiale',
+  },
+});
+
+  console.log('✅ Seed terminé : patients, doctors, profiles, slot, appointment créés.');
 }
 
 main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (e) => {
-    console.error('❌ Seed failed:', e);
-    await prisma.$disconnect();
+  .catch((e) => {
+    console.error('❌ Seed failed', e);
     process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
   });

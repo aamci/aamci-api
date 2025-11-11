@@ -1,20 +1,27 @@
+// src/search/search.controller.ts
 import { Controller, Get, Query } from '@nestjs/common';
-
-const demoDoctors = [
-  { id: 'doc-1', name: 'Dr. A. Dupont', specialty: 'Cardiologie', city: 'Paris', hospital: 'Montparnasse' },
-  { id: 'doc-2', name: 'Dr. B. Martin', specialty: 'Dermatologie', city: 'Paris', hospital: 'Saint-Louis' },
-  { id: 'doc-3', name: 'Dr. C. Diallo', specialty: 'Pédiatrie',    city: 'Lyon',  hospital: 'Lumières' },
-];
+import { SearchService } from './search.service';
 
 @Controller('search')
 export class SearchController {
+  constructor(private readonly search: SearchService) {}
+
   @Get('doctors')
-  doctors(@Query('q') q?: string, @Query('city') city?: string) {
-    console.log('SearchController.doctors', { q, city });
-    const list = demoDoctors.filter(d =>
-      (!q || d.name.toLowerCase().includes((q||'').toLowerCase())) &&
-      (!city || d.city.toLowerCase().includes((city||'').toLowerCase()))
-    );
-    return Array.isArray(list) ? list : [];
+  async doctors(
+    @Query('q') q?: string,
+    @Query('city') city?: string,
+    @Query('specialty') specialty?: string,
+  ) {
+    return this.search.doctors(q, city, specialty);
+  }
+
+  @Get('hospitals')
+  async hospitals(@Query('q') q?: string, @Query('city') city?: string) {
+    return this.search.hospitals(q, city);
+  }
+
+  @Get('pharmacies')
+  async pharmacies(@Query('q') q?: string, @Query('city') city?: string) {
+    return this.search.pharmacies(q, city);
   }
 }
