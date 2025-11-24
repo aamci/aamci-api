@@ -46,6 +46,7 @@ export class AirtelMoneyService {
       data: {
         doctorId: params.doctorId,
         amount: params.amount,
+        patientId: params.patientId,
         type: 'PAYMENT',
         status: 'PENDING',
         provider: 'AIRTEL_MONEY',

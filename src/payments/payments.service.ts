@@ -32,6 +32,7 @@ export class PaymentsService {
     const tx = await this.prisma.transaction.create({
       data: {
         doctorId,
+        patientId,
         amount: amountCents / 100,
         type: 'PAYMENT',
         status: 'PENDING',

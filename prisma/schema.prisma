@@ -182,21 +182,23 @@ model AppointmentKind {
 }
 
 model Transaction {
-  id            String  @id @default(cuid())
-  doctorId      String
-  patientId     String
+  id        String @id @default(cuid())
+  doctorId  String
+  patientId String
+
   appointmentId String?
 
-  amount    Decimal           @db.Decimal(10, 2)
-  type      TransactionType
-  status    TransactionStatus @default(PENDING)
-  createdAt DateTime          @default(now())
-
+  amount      Decimal           @db.Decimal(10, 2)
+  type        TransactionType
+  status      TransactionStatus @default(PENDING)
+  createdAt   DateTime          @default(now())
+  // 👇 CHAMP MANQUANT
+  provider    PaymentProvider
   // 🔹 relation vers le docteur
-  doctor User @relation("DoctorTransactions", fields: [doctorId], references: [id])
-
+  doctor      User              @relation("DoctorTransactions", fields: [doctorId], references: [id])
+  providerRef String? // 👈 ADD THIS
   // 🔹 relation vers le patient
-  patient User @relation("PatientTransactions", fields: [patientId], references: [id])
+  patient     User              @relation("PatientTransactions", fields: [patientId], references: [id])
 
   appointment Appointment? @relation(fields: [appointmentId], references: [id])
   description String? // "Consultation #1234", "Retrait Stripe", etc.
@@ -239,4 +241,9 @@ enum MovementType {
   DEBIT
   COMMISSION
   WITHDRAWAL
+}
+
+enum PaymentProvider {
+  AIRTEL_MONEY
+  STRIPE
 }
