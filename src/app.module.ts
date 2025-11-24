@@ -7,6 +7,11 @@ import { AppointmentsModule } from './appointments/appointments.module';
 import { SearchModule } from './search/search.module';
 import { SlotsModule } from './slots/slots.module';
 import { AppointmentKindsModule } from './appointment-kinds/appointment-kinds.module';
+import { DoctorProfilesModule } from './doctor-profiles/doctor-profiles.module';
+import { StatsModule } from './stats/stats.module';
+import { WalletModule } from './wallet/wallet.module';
+import { PaymentsModule } from './payments/payments.module';
+
 
 @Module({ 
     imports:[
@@ -16,7 +21,9 @@ import { AppointmentKindsModule } from './appointment-kinds/appointment-kinds.mo
         AppointmentsModule,
         SearchModule, 
         SlotsModule, 
-        AppointmentKindsModule,
+        AppointmentKindsModule, 
+        DoctorProfilesModule, StatsModule, WalletModule, PaymentsModule,
     ],
-     providers:[PrismaService] })
+     providers:[PrismaService]
+    })
 export class AppModule {}

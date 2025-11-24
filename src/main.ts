@@ -5,12 +5,18 @@ import { exec } from 'child_process';
 import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   const origins = [
   'http://localhost:3000',
   'https://web-doctor-p93i.onrender.com',
   'https://web-patient.onrender.com',   // 👈 ton front Render
 ];
+
+  app.use(
+    '/payments/stripe/webhook',
+    bodyParser.raw({ type: 'application/json' }),
+  );
+
   app.enableCors({
     origin: (origin, cb) => cb(null, !origin || origins.includes(origin)),
     methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],

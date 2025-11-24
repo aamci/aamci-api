@@ -9,21 +9,27 @@ datasource db {
 }
 
 model User {
-  id               String            @id @default(cuid())
-  email            String            @unique
-  password         String
-  role             Role
-  fullName         String?
-  avatarUrl        String?
-  phone            String?
-  sex              String? // ou enum si tu préfères
-  birthdate        DateTime?
-  city             String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  doctorProfile    DoctorProfile?
-  appointments     Appointment[]     @relation("PatientAppointments")
-  appointmentKinds AppointmentKind[]
+  id                 String            @id @default(cuid())
+  email              String            @unique
+  password           String
+  role               Role
+  fullName           String?
+  avatarUrl          String?
+  phone              String?
+  sex                String? // ou enum si tu préfères
+  birthdate          DateTime?
+  city               String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  doctorProfile      DoctorProfile?
+  appointments       Appointment[]     @relation("PatientAppointments")
+  appointmentKinds   AppointmentKind[]
+  // 🔹 Transactions où l'utilisateur est DOCTOR
+  doctorTransactions Transaction[]     @relation("DoctorTransactions")
+
+  // 🔹 Transactions où l'utilisateur est PATIENT
+  patientTransactions Transaction[] @relation("PatientTransactions")
+  wallet              Wallet?
 }
 
 enum Role {
@@ -46,8 +52,9 @@ model Appointment {
   kindId    String?
   kind      AppointmentKind?  @relation(fields: [kindId], references: [id])
 
-  slot    AvailabilitySlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
-  patient User             @relation("PatientAppointments", fields: [patientId], references: [id])
+  slot         AvailabilitySlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  patient      User             @relation("PatientAppointments", fields: [patientId], references: [id])
+  transactions Transaction[]
 }
 
 enum AppointmentType {
@@ -172,4 +179,64 @@ model AppointmentKind {
   updatedAt DateTime @updatedAt
 
   appointments Appointment[]
+}
+
+model Transaction {
+  id            String  @id @default(cuid())
+  doctorId      String
+  patientId     String
+  appointmentId String?
+
+  amount    Decimal           @db.Decimal(10, 2)
+  type      TransactionType
+  status    TransactionStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+
+  // 🔹 relation vers le docteur
+  doctor User @relation("DoctorTransactions", fields: [doctorId], references: [id])
+
+  // 🔹 relation vers le patient
+  patient User @relation("PatientTransactions", fields: [patientId], references: [id])
+
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+  description String? // "Consultation #1234", "Retrait Stripe", etc.
+}
+
+enum TransactionType {
+  PAYMENT // paiement pour une consultation / abonnement
+  PAYOUT // retrait vers le compte bancaire du docteur
+  REFUND // remboursement éventuel
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model Wallet {
+  id        String   @id @default(cuid())
+  doctorId  String   @unique
+  balance   Decimal  @default(0) @db.Decimal(10, 2)
+  updatedAt DateTime @updatedAt
+
+  doctor    User             @relation(fields: [doctorId], references: [id])
+  movements WalletMovement[]
+}
+
+model WalletMovement {
+  id        String       @id @default(cuid())
+  walletId  String
+  amount    Decimal      @db.Decimal(10, 2)
+  type      MovementType
+  createdAt DateTime     @default(now())
+
+  wallet Wallet @relation(fields: [walletId], references: [id])
+}
+
+enum MovementType {
+  CREDIT
+  DEBIT
+  COMMISSION
+  WITHDRAWAL
 }
