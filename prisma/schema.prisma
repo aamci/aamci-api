@@ -11,24 +11,28 @@ datasource db {
 model User {
   id                 String            @id @default(cuid())
   email              String            @unique
-  password           String
+  password           String?           // Optionnel pour OAuth users
   role               Role
   fullName           String?
   avatarUrl          String?
   phone              String?
-  sex                String? // ou enum si tu préfères
+  sex                String?
   birthdate          DateTime?
   city               String?
+  emailVerified      Boolean           @default(false)
+  verificationToken  String?           @unique
+  tokenExpiry        DateTime?
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
+
   doctorProfile      DoctorProfile?
   appointments       Appointment[]     @relation("PatientAppointments")
   appointmentKinds   AppointmentKind[]
-  // 🔹 Transactions où l'utilisateur est DOCTOR
-  doctorTransactions Transaction[]     @relation("DoctorTransactions")
+  accounts           Account[]         // OAuth accounts
 
-  // 🔹 Transactions où l'utilisateur est PATIENT
-  patientTransactions Transaction[] @relation("PatientTransactions")
+  // Transactions relations (nommées pour éviter ambiguïté)
+  doctorTransactions  Transaction[]     @relation("DoctorTransactions")
+  patientTransactions Transaction[]     @relation("PatientTransactions")
   wallet              Wallet?
 }
 
@@ -41,27 +45,19 @@ enum Role {
 }
 
 model Appointment {
-  id        String            @id @default(cuid())
-  slotId    String
-  patientId String
-  status    AppointmentStatus @default(PENDING)
-  notes     String?
-  createdAt DateTime          @default(now())
-  type      String?
-  // nouveau :
-  kindId    String?
-  kind      AppointmentKind?  @relation(fields: [kindId], references: [id])
+  id         String            @id @default(cuid())
+  slotId     String
+  patientId  String
+  status     AppointmentStatus @default(PENDING)
+  notes      String?
+  createdAt  DateTime          @default(now())
+  type       String?
+  kindId     String?
+  kind       AppointmentKind?  @relation(fields: [kindId], references: [id])
 
-  slot         AvailabilitySlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
-  patient      User             @relation("PatientAppointments", fields: [patientId], references: [id])
+  slot        AvailabilitySlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  patient     User             @relation("PatientAppointments", fields: [patientId], references: [id])
   transactions Transaction[]
-}
-
-enum AppointmentType {
-  CONSULTATION
-  PREMIERE_CONSULTATION
-  SUIVI
-  URGENCE
 }
 
 enum AppointmentStatus {
@@ -116,32 +112,19 @@ model Inventory {
 }
 
 model AvailabilitySlot {
-  id      String @id @default(cuid())
-  ownerId String
-
-  // ❗ on laisse en String parce qu'actuellement ta table a déjà une colonne ownerType en texte
+  id        String   @id @default(cuid())
+  ownerId   String
   ownerType String
+  start     DateTime
+  end       DateTime
+  capacity  Int
+  status    String   @default("ACTIVE")
 
-  start    DateTime
-  end      DateTime
-  capacity Int
-  status   String   @default("ACTIVE")
-
-  // ❗ on les met OPTIONNELLES pour que Prisma puisse pousser sans rager
+  // rendus optionnels pour faciliter db push
   createdAt DateTime? @default(now())
   updatedAt DateTime? @updatedAt
 
   appointments Appointment[]
-}
-
-enum OwnerType {
-  DOCTOR
-  HOSPITAL
-}
-
-enum SlotStatus {
-  ACTIVE
-  INACTIVE
 }
 
 model Hospital {
@@ -155,23 +138,24 @@ model DoctorProfile {
   id           String   @id @default(cuid())
   userId       String   @unique
   specialty    String?
-  hospitalType String? // clinique privée, CHU, cabinet...
+  hospitalType String?
   address      String?
   city         String?
-  presentation String? // texte libre: "Cardiologue depuis 12 ans..."
-  formations   String? // JSON ou texte, on reste en texte pour l’instant
-  experiences  String? // idem
+  presentation String?
+  formations   String?
+  experiences  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // many-to-many implicite avec Facility : NE PAS mettre "references" ici
+  facilities   Facility[]  @relation("DoctorFacilities")
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model AppointmentKind {
   id          String  @id @default(cuid())
-  name        String // "Première consultation", "Suivi", ...
+  name        String
   description String?
-  // si NULL → type global (admin)
   doctorId    String?
   doctor      User?   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
 
@@ -182,32 +166,29 @@ model AppointmentKind {
 }
 
 model Transaction {
-  id        String @id @default(cuid())
-  doctorId  String
-  patientId String
-
+  id           String  @id @default(cuid())
+  doctorId     String
+  patientId    String
   appointmentId String?
 
-  amount      Decimal           @db.Decimal(10, 2)
-  type        TransactionType
-  status      TransactionStatus @default(PENDING)
-  createdAt   DateTime          @default(now())
-  // 👇 CHAMP MANQUANT
-  provider    PaymentProvider
-  // 🔹 relation vers le docteur
-  doctor      User              @relation("DoctorTransactions", fields: [doctorId], references: [id])
-  providerRef String? // 👈 ADD THIS
-  // 🔹 relation vers le patient
-  patient     User              @relation("PatientTransactions", fields: [patientId], references: [id])
+  amount       Decimal           @db.Decimal(10, 2)
+  type         TransactionType
+  status       TransactionStatus @default(PENDING)
+  createdAt    DateTime          @default(now())
+  provider     PaymentProvider
+  providerRef  String?           // id du provider (Stripe session id, airtel ref)
+  description  String?
 
-  appointment Appointment? @relation(fields: [appointmentId], references: [id])
-  description String? // "Consultation #1234", "Retrait Stripe", etc.
+  // relations, noms explicites pour lever ambiguïté
+  doctor       User   @relation("DoctorTransactions", fields: [doctorId], references: [id])
+  patient      User   @relation("PatientTransactions", fields: [patientId], references: [id])
+  appointment  Appointment? @relation(fields: [appointmentId], references: [id])
 }
 
 enum TransactionType {
-  PAYMENT // paiement pour une consultation / abonnement
-  PAYOUT // retrait vers le compte bancaire du docteur
-  REFUND // remboursement éventuel
+  PAYMENT
+  PAYOUT
+  REFUND
 }
 
 enum TransactionStatus {
@@ -246,4 +227,51 @@ enum MovementType {
 enum PaymentProvider {
   AIRTEL_MONEY
   STRIPE
+}
+
+model Facility {
+  id          String    @id @default(cuid())
+  name        String
+  type        FacilityType
+  description String?   @db.Text
+  address     String?
+  city        String?
+  geoLat      Float?
+  geoLng      Float?
+  phone       String?
+  email       String?
+  website     String?
+  services    Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // many-to-many implicite : côté Facility on doit garder juste Facility[]
+  doctors     DoctorProfile[]  @relation("DoctorFacilities")
+}
+
+enum FacilityType {
+  CLINIC
+  CHU
+  POLYCLINIC
+  CENTER
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  provider          String   // "google", "facebook"
+  providerAccountId String   // ID from the provider
+  accessToken       String?  @db.Text
+  refreshToken      String?  @db.Text
+  expiresAt         Int?
+  tokenType         String?
+  scope             String?
+  idToken           String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
 }

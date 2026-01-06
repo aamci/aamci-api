@@ -10,7 +10,7 @@ import {
   RawBodyRequest,
 } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AirtelMoneyService } from './airtel-money/airtel-money.service';
 
 @Controller('payments')

@@ -13,7 +13,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { SlotsService } from './slots.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('slots')
 //@UseGuards(JwtAuthGuard)

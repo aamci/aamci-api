@@ -6,35 +6,44 @@ import { PrismaService } from '../common/prisma.service';
 export class SearchService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async doctors(q?: string, city?: string, specialty?: string) {
+  async doctors(q?: string, city?: string, specialty?: string, facilityId?: string) {
+    const where: any = {
+      role: 'DOCTOR',
+    };
+
+    if (q) {
+      where.OR = [
+        { fullName: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+        { doctorProfile: { presentation: { contains: q, mode: 'insensitive' } } },
+      ];
+    }
+
+    if (city) {
+      where.OR = [
+        { city: { contains: city, mode: 'insensitive' } },
+        { doctorProfile: { city: { contains: city, mode: 'insensitive' } } },
+      ];
+    }
+
+    if (specialty || facilityId) {
+      where.doctorProfile = {};
+
+      if (specialty) {
+        where.doctorProfile.specialty = { contains: specialty, mode: 'insensitive' };
+      }
+
+      if (facilityId) {
+        where.doctorProfile.facilities = {
+          some: {
+            id: facilityId,
+          },
+        };
+      }
+    }
+
     return this.prisma.user.findMany({
-      where: {
-        role: 'DOCTOR',
-        ...(q
-          ? {
-              OR: [
-                { fullName: { contains: q, mode: 'insensitive' } },
-                { email: { contains: q, mode: 'insensitive' } },
-                { doctorProfile: { presentation: { contains: q, mode: 'insensitive' } } },
-              ],
-            }
-          : {}),
-        ...(city
-          ? {
-              OR: [
-                { city: { contains: city, mode: 'insensitive' } },
-                { doctorProfile: { city: { contains: city, mode: 'insensitive' } } },
-              ],
-            }
-          : {}),
-        ...(specialty
-          ? {
-              doctorProfile: {
-                specialty: { contains: specialty, mode: 'insensitive' },
-              },
-            }
-          : {}),
-      },
+      where,
       include: {
         doctorProfile: true,
       },

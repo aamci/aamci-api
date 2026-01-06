@@ -11,8 +11,9 @@ export class SearchController {
     @Query('q') q?: string,
     @Query('city') city?: string,
     @Query('specialty') specialty?: string,
+    @Query('facilityId') facilityId?: string,
   ) {
-    return this.search.doctors(q, city, specialty);
+    return this.search.doctors(q, city, specialty, facilityId);
   }
 
   @Get('hospitals')

@@ -3,14 +3,19 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { exec } from 'child_process';
 import * as bodyParser from 'body-parser';
+import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
   const origins = [
   'http://localhost:3000',
+  'http://localhost:3001',
   'https://web-doctor-p93i.onrender.com',
-  'https://web-patient.onrender.com',   // 👈 ton front Render
+  'https://web-patient.onrender.com',
 ];
+
+  // Enable cookie parser for reading httpOnly cookies
+  app.use(cookieParser());
 
   app.use(
     '/payments/stripe/webhook',
@@ -21,7 +26,7 @@ async function bootstrap() {
     origin: (origin, cb) => cb(null, !origin || origins.includes(origin)),
     methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
     allowedHeaders: ['Content-Type','Authorization'],
-    credentials: true,
+    credentials: true, // Required for cookies to work cross-origin
   });
   //app.use(bodyParser.json({ limit: '10mb' }));
   //app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));

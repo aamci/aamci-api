@@ -1,7 +1,7 @@
 // apps/api/src/wallet/wallet.controller.ts
 import { Controller, Get, Query, Req, UseGuards, ForbiddenException } from '@nestjs/common';
 import { WalletService } from './wallet.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('wallet')
 @UseGuards(JwtAuthGuard)
