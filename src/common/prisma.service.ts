@@ -4,8 +4,6 @@ import { PrismaClient } from '@prisma/client';
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit {
   private readonly logger = new Logger(PrismaService.name);
-  facility: any;
-  doctorFacility: any;
 
   async onModuleInit() {
     if (process.env.PRISMA_CONNECT_ON_BOOT === 'true') {
