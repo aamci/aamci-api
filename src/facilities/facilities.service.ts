@@ -118,10 +118,40 @@ export class FacilitiesService {
     };
   }
 
-  async addDoctor(facilityId: string, doctorId: string, department?: string) {
-    // Si tu utilises DoctorFacility explicite
-    return this.prisma.doctorFacility.create({
-      data: { facilityId, doctorId, department },
+  async addDoctor(facilityId: string, doctorId: string) {
+    // Many-to-many implicite: connecter le docteur à la facility
+    return this.prisma.facility.update({
+      where: { id: facilityId },
+      data: {
+        doctors: {
+          connect: { id: doctorId },
+        },
+      },
+      include: {
+        doctors: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async removeDoctor(facilityId: string, doctorId: string) {
+    // Déconnecter un docteur d'une facility
+    return this.prisma.facility.update({
+      where: { id: facilityId },
+      data: {
+        doctors: {
+          disconnect: { id: doctorId },
+        },
+      },
     });
   }
 }

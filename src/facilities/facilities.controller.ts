@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Param, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Param, Post, Body, UseGuards, Delete } from '@nestjs/common';
 import { FacilitiesService } from './facilities.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -36,7 +36,14 @@ export class FacilitiesController {
   @Post(':id/doctors')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'DOCTOR')
-  addDoctor(@Param('id') id: string, @Body() body: { doctorId: string; department?: string }) {
-    return this.svc.addDoctor(id, body.doctorId, body.department);
+  addDoctor(@Param('id') id: string, @Body() body: { doctorId: string }) {
+    return this.svc.addDoctor(id, body.doctorId);
+  }
+
+  @Delete(':id/doctors/:doctorId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'DOCTOR')
+  removeDoctor(@Param('id') id: string, @Param('doctorId') doctorId: string) {
+    return this.svc.removeDoctor(id, doctorId);
   }
 }

@@ -26,9 +26,14 @@ model User {
   updatedAt          DateTime          @updatedAt
 
   doctorProfile      DoctorProfile?
+  patientProfile     PatientProfile?
   appointments       Appointment[]     @relation("PatientAppointments")
   appointmentKinds   AppointmentKind[]
   accounts           Account[]         // OAuth accounts
+
+  // Medical Notes relations
+  patientNotes       MedicalNote[]     @relation("PatientNotes")
+  doctorNotes        MedicalNote[]     @relation("DoctorNotes")
 
   // Transactions relations (nommées pour éviter ambiguïté)
   doctorTransactions  Transaction[]     @relation("DoctorTransactions")
@@ -55,9 +60,10 @@ model Appointment {
   kindId     String?
   kind       AppointmentKind?  @relation(fields: [kindId], references: [id])
 
-  slot        AvailabilitySlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
-  patient     User             @relation("PatientAppointments", fields: [patientId], references: [id])
+  slot         AvailabilitySlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  patient      User             @relation("PatientAppointments", fields: [patientId], references: [id])
   transactions Transaction[]
+  medicalNotes MedicalNote[]
 }
 
 enum AppointmentStatus {
@@ -150,6 +156,95 @@ model DoctorProfile {
   // many-to-many implicite avec Facility : NE PAS mettre "references" ici
   facilities   Facility[]  @relation("DoctorFacilities")
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PatientProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+
+  // IDENTITÉ
+  civility       Civility?
+  birthLastName  String?   // Nom de naissance
+  usageLastName  String?   // Nom d'usage
+  firstName      String?
+  usualFirstName String?
+  birthDate      DateTime?
+  birthPlace     String?
+  birthCountry   String?
+
+  // CONTACT
+  phonePrimary   String?
+  phoneSecondary String?
+
+  // ADRESSE
+  addressLine1   String?
+  postalCode     String?
+  city           String?
+  country        String?
+
+  // COUVERTURE SOCIALE
+  socialSecurityNumber String?   // N° sécurité sociale
+  insuranceProvider    String?   // Organisme
+  mutualInsurance      String?   // Mutuelle
+
+  // INFORMATIONS MÉDICALES
+  primaryDoctorName String?
+  bloodGroup        String?
+  heightCm          Int?
+  weightKg          Int?
+
+  // DONNÉES ADMINISTRATIVES
+  patientCode    String?   @unique  // ex: pat-3
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Civility {
+  MR       // Monsieur
+  MME      // Madame
+  MLLE     // Mademoiselle
+}
+
+model MedicalNote {
+  id          String   @id @default(cuid())
+  patientId   String   // Patient concerné
+  doctorId    String   // Médecin auteur de la note
+
+  // Type de note
+  type        NoteType @default(OBSERVATION)
+
+  // Contenu
+  title       String?
+  content     String   @db.Text
+
+  // Métadonnées
+  appointmentId String?  // Lien vers un rendez-vous si applicable
+  isPrivate     Boolean  @default(false)  // Note privée (visible uniquement par l'auteur)
+  tags          String[] // Tags pour catégorisation (ex: ["diabète", "suivi"])
+
+  // Dates
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  patient     User        @relation("PatientNotes", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor      User        @relation("DoctorNotes", fields: [doctorId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([appointmentId])
+}
+
+enum NoteType {
+  OBSERVATION    // Observation générale
+  FOLLOW_UP      // Note de suivi
+  PRESCRIPTION   // Note de prescription
+  DIAGNOSIS      // Diagnostic
+  TREATMENT_PLAN // Plan de traitement
+  OTHER          // Autre
 }
 
 model AppointmentKind {
