@@ -72,6 +72,37 @@ export class SlotsController {
     return this.slots.bulkCreate(userId, body.slots || []);
   }
 
+  @Post('generate')
+  @UseGuards(JwtAuthGuard)
+  async generateSlots(@Req() req, @Body() body: any) {
+    const userId = req.user.id || req.user.userId;
+    if (!userId) throw new UnauthorizedException('Utilisateur non authentifié');
+
+    const {
+      days,
+      startHour,
+      endHour,
+      stepMinutes,
+      startDate,
+      endDate,
+      excludedHours,
+      capacity,
+    } = body;
+
+    return this.slots.generateSlotsForPeriod({
+      ownerId: userId,
+      ownerType: req.user.role === 'HOSPITAL' ? 'HOSPITAL' : 'DOCTOR',
+      days: days || [],
+      startHour: startHour || 8,
+      endHour: endHour || 18,
+      stepMinutes: stepMinutes || 30,
+      startDate: startDate ? new Date(startDate) : new Date(),
+      endDate: endDate ? new Date(endDate) : new Date(),
+      excludedHours: excludedHours || [],
+      capacity: capacity || 1,
+    });
+  }
+
   @Put(':id')
   async update(@Req() req, @Param('id') id: string, @Body() dto: any) {
     const userId = this.getUserId(req);

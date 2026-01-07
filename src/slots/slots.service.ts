@@ -17,6 +17,7 @@ export class SlotsService {
         appointments: {
           include: {
             patient: true,
+            kind: true, // Inclure le type de consultation
           },
         },
       },
@@ -181,6 +182,100 @@ async generateWeeklySlots(params: {
     }
   }
   return created;
+}
+
+async generateSlotsForPeriod(params: {
+  ownerId: string;
+  ownerType: 'DOCTOR' | 'HOSPITAL';
+  days: number[];
+  startHour: number;
+  endHour: number;
+  stepMinutes: number;
+  startDate: Date;
+  endDate: Date;
+  excludedHours: string[];
+  capacity: number;
+}) {
+  const {
+    ownerId,
+    ownerType,
+    days,
+    startHour,
+    endHour,
+    stepMinutes,
+    startDate,
+    endDate,
+    excludedHours,
+    capacity,
+  } = params;
+
+  const created: any[] = [];
+  let skipped = 0;
+
+  // Parcourir tous les jours entre startDate et endDate
+  const currentDate = new Date(startDate);
+  currentDate.setHours(0, 0, 0, 0);
+
+  while (currentDate <= endDate) {
+    const dayOfWeek = currentDate.getDay() === 0 ? 7 : currentDate.getDay();
+
+    // Vérifier si ce jour est sélectionné
+    if (days.includes(dayOfWeek)) {
+      // Générer les créneaux pour ce jour
+      for (let h = startHour; h < endHour; h++) {
+        for (let m = 0; m < 60; m += stepMinutes) {
+          const hourStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+
+          // Vérifier si cette heure est exclue
+          if (excludedHours.includes(hourStr)) {
+            continue;
+          }
+
+          const start = new Date(currentDate);
+          start.setHours(h, m, 0, 0);
+
+          const end = new Date(start.getTime() + stepMinutes * 60000);
+
+          // Vérifier s'il y a déjà un créneau qui chevauche
+          const overlap = await this.prisma.availabilitySlot.findFirst({
+            where: {
+              ownerId,
+              start: { lt: end },
+              end: { gt: start },
+            },
+          });
+
+          if (overlap) {
+            skipped++;
+            continue;
+          }
+
+          // Créer le créneau
+          const slot = await this.prisma.availabilitySlot.create({
+            data: {
+              ownerId,
+              ownerType,
+              start,
+              end,
+              capacity,
+              status: 'ACTIVE',
+            },
+          });
+
+          created.push(slot);
+        }
+      }
+    }
+
+    // Passer au jour suivant
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return {
+    created: created.length,
+    skipped,
+    message: `${created.length} créneaux créés, ${skipped} créneaux ignorés (déjà existants)`,
+  };
 }
 
 }

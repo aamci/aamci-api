@@ -1,14 +1,22 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import * as argon2 from 'argon2';
 import { Role } from '../auth/auth.service';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
-  findByEmail(email: string) {
-    return this.prisma.user.findUnique({ where: { email } });
+  async findByEmail(email: string) {
+    try {
+      return await this.prisma.user.findUnique({ where: { email } });
+    } catch (error) {
+      this.logger.error(`Error finding user by email: ${error.message}`);
+      // Les filtres Prisma globaux géreront les erreurs spécifiques
+      throw error;
+    }
   }
 
 

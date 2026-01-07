@@ -1,26 +1,30 @@
-import { Body, Controller, Post, Res, HttpCode, HttpStatus, UseGuards, Get, Req, Query } from '@nestjs/common';
+import { Body, Controller, Post, Res, HttpCode, HttpStatus, UseGuards, Get, Req, Query, UsePipes, ValidationPipe, BadRequestException } from '@nestjs/common';
 import { Response, Request } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { FacebookAuthGuard } from './guards/facebook-auth.guard';
-
-type Role = 'PATIENT' | 'DOCTOR' | 'PHARMACY' | 'HOSPITAL' | 'ADMIN';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
 
 @Controller('auth')
+@UsePipes(new ValidationPipe({
+  whitelist: true, // Supprime les propriétés non définies dans le DTO
+  forbidNonWhitelisted: true, // Rejette la requête si des propriétés inconnues sont présentes
+  transform: true, // Transforme automatiquement les types
+}))
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('register')
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // Max 3 registrations per minute
-  async register(
-    @Body() body: { email: string; password: string; role?: Role },
-  ) {
+  async register(@Body() registerDto: RegisterDto) {
     const result = await this.auth.register(
-      body.email,
-      body.password,
-      body.role ?? 'PATIENT',
+      registerDto.email,
+      registerDto.password,
+      registerDto.role ?? 'PATIENT',
     );
 
     // Ne pas set le cookie, attendre la vérification d'email
@@ -31,10 +35,10 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // Max 5 login attempts per minute
   async login(
-    @Body() body: { email: string; password: string },
+    @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { access_token } = await this.auth.login(body.email, body.password);
+    const { access_token } = await this.auth.login(loginDto.email, loginDto.password);
 
     // Set httpOnly cookie instead of returning token
     this.setAuthCookie(res, access_token);
@@ -58,6 +62,7 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   getProfile(@Req() req: any) {
+    console.log('req.user: ', req.user)
     // req.user is populated by JwtAuthGuard
     return {
       id: req.user.userId,
@@ -113,6 +118,10 @@ export class AuthController {
     @Query('token') token: string,
     @Res({ passthrough: true }) res: Response,
   ) {
+    if (!token) {
+      throw new BadRequestException('Le token de vérification est obligatoire');
+    }
+
     const { access_token } = await this.auth.verifyEmail(token);
 
     // Set httpOnly cookie to automatically log in the user
@@ -127,8 +136,8 @@ export class AuthController {
   @Post('resend-verification')
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // Max 3 resend attempts per minute
-  async resendVerification(@Body() body: { email: string }) {
-    return this.auth.resendVerificationEmail(body.email);
+  async resendVerification(@Body() resendDto: ResendVerificationDto) {
+    return this.auth.resendVerificationEmail(resendDto.email);
   }
 
   private setAuthCookie(res: Response, token: string) {

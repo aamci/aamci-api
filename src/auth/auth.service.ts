@@ -66,6 +66,7 @@ export class AuthService {
     }
 
     // délègue la vérification du hash au UsersService
+
     const ok = await this.users.validatePassword(user.password, password);
     if (!ok) throw new UnauthorizedException('Invalid credentials');
 
