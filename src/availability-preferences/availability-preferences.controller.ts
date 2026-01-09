@@ -27,9 +27,10 @@ export class AvailabilityPreferencesController {
   @Post()
   @Roles('DOCTOR', 'FACILITY_MANAGER')
   create(@Req() req: any, @Body() createPreferenceDto: CreatePreferenceDto) {
+    const userId = req.user?.userId || req.user?.sub;
     const ownerType = req.user.role;
     return this.availabilityPreferencesService.create(
-      req.user.sub,
+      userId,
       ownerType,
       createPreferenceDto,
     );
@@ -38,9 +39,10 @@ export class AvailabilityPreferencesController {
   @Get()
   @Roles('DOCTOR', 'FACILITY_MANAGER')
   findAll(@Req() req: any) {
+    const userId = req.user?.userId || req.user?.sub;
     const ownerType = req.user.role;
     return this.availabilityPreferencesService.findAllByOwner(
-      req.user.sub,
+      userId,
       ownerType,
     );
   }
@@ -48,7 +50,7 @@ export class AvailabilityPreferencesController {
   @Get(':id')
   @Roles('DOCTOR', 'FACILITY_MANAGER')
   findOne(@Req() req: any, @Param('id') id: string) {
-    return this.availabilityPreferencesService.findOne(id, req.user.sub);
+    return this.availabilityPreferencesService.findOne(id, req.user?.userId || req.user?.sub);
   }
 
   @Patch(':id')
@@ -60,7 +62,7 @@ export class AvailabilityPreferencesController {
   ) {
     return this.availabilityPreferencesService.update(
       id,
-      req.user.sub,
+      req.user?.userId || req.user?.sub,
       updatePreferenceDto,
     );
   }
@@ -68,13 +70,13 @@ export class AvailabilityPreferencesController {
   @Delete(':id')
   @Roles('DOCTOR', 'FACILITY_MANAGER')
   remove(@Req() req: any, @Param('id') id: string) {
-    return this.availabilityPreferencesService.remove(id, req.user.sub);
+    return this.availabilityPreferencesService.remove(id, req.user?.userId || req.user?.sub);
   }
 
   @Post(':id/set-default')
   @Roles('DOCTOR', 'FACILITY_MANAGER')
   setDefault(@Req() req: any, @Param('id') id: string) {
-    return this.availabilityPreferencesService.setDefault(id, req.user.sub);
+    return this.availabilityPreferencesService.setDefault(id, req.user?.userId || req.user?.sub);
   }
 
   @Post(':id/apply')
@@ -86,7 +88,7 @@ export class AvailabilityPreferencesController {
   ) {
     return this.availabilityPreferencesService.applyPreference(
       id,
-      req.user.sub,
+      req.user?.userId || req.user?.sub,
       applyPreferenceDto,
     );
   }

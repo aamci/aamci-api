@@ -33,17 +33,22 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 5, ttl: 60000 } }) // Max 5 login attempts per minute
+  @Throttle({ default: { limit: 100, ttl: 60000 } }) // Max 100 login attempts per minute (dev mode)
   async login(
     @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
     const { access_token } = await this.auth.login(loginDto.email, loginDto.password);
 
-    // Set httpOnly cookie instead of returning token
+    // Set httpOnly cookie for same-origin requests
     this.setAuthCookie(res, access_token);
 
-    return { success: true, message: 'Login successful' };
+    // Also return token in body for cross-origin requests
+    return {
+      success: true,
+      message: 'Login successful',
+      token: access_token // Return token for cross-origin scenarios
+    };
   }
 
   @Post('logout')
