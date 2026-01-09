@@ -7,11 +7,16 @@ export class SlotsService {
 
   /**
    * 🔒 Pour le doctor connecté (vue interne)
-   * Renvoie tous ses créneaux, avec rendez-vous et patients
+   * Renvoie UNIQUEMENT ses créneaux avec rendez-vous (slots réservés)
    */
   async findAllByOwner(ownerId: string) {
     return this.prisma.availabilitySlot.findMany({
-      where: { ownerId },
+      where: {
+        ownerId,
+        appointments: {
+          some: {}, // Only slots that have at least one appointment
+        },
+      },
       orderBy: { start: 'asc' },
       include: {
         appointments: {

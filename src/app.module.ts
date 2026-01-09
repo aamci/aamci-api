@@ -22,6 +22,9 @@ import { StatsModule } from './stats/stats.module';
 import { WalletModule } from './wallet/wallet.module';
 import { PaymentsModule } from './payments/payments.module';
 import { FacilitiesModule } from './facilities/facilities.module';
+import { AvailabilityRulesModule } from './availability-rules/availability-rules.module';
+import { FacilityManagersModule } from './facility-managers/facility-managers.module';
+import { AvailabilityPreferencesModule } from './availability-preferences/availability-preferences.module';
 
 @Module({
   imports: [
@@ -38,12 +41,15 @@ import { FacilitiesModule } from './facilities/facilities.module';
     AppointmentsModule,
     SearchModule,
     SlotsModule,
+    AvailabilityRulesModule,
+    AvailabilityPreferencesModule,
     AppointmentKindsModule,
     DoctorProfilesModule,
     StatsModule,
     WalletModule,
     PaymentsModule,
     FacilitiesModule,
+    FacilityManagersModule,
   ],
   controllers: [HealthController],
   providers: [

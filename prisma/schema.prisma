@@ -27,6 +27,7 @@ model User {
 
   doctorProfile      DoctorProfile?
   patientProfile     PatientProfile?
+  facilityManager    FacilityManager?
   appointments       Appointment[]     @relation("PatientAppointments")
   appointmentKinds   AppointmentKind[]
   accounts           Account[]         // OAuth accounts
@@ -47,6 +48,7 @@ enum Role {
   PHARMACY
   HOSPITAL
   ADMIN
+  FACILITY_MANAGER
 }
 
 model Appointment {
@@ -115,6 +117,95 @@ model Inventory {
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   quantity  Int      @default(0)
   updatedAt DateTime @updatedAt
+}
+
+model AvailabilityRule {
+  id                String     @id @default(cuid())
+  ownerId           String
+  ownerType         String     // DOCTOR or HOSPITAL
+
+  // Time parameters
+  startDate         DateTime
+  endDate           DateTime
+  daysOfWeek        Int[]      // [1,2,3,4,5] = Monday-Friday (1=Monday, 7=Sunday)
+
+  // Daily schedule
+  startHour         Int        // 8
+  endHour           Int        // 18
+  slotDurationMins  Int        // 30
+  capacity          Int        @default(1)
+
+  // Capacity and appointment types
+  allowedKindIds    String[]   // IDs des AppointmentKind acceptés (vide = tous)
+
+  // Exclusions (stored as JSON strings)
+  excludedTimes     String[]   // ["12:00-13:00", "14:30-15:00"]
+
+  // Advanced parameters
+  minBookingNotice     Int?     // Délai minimum en heures (ex: 24h)
+  maxBookingAdvance    Int?     // Délai maximum en jours (ex: 90 jours)
+  autoConfirm          Boolean  @default(true)
+  allowCancellation    Boolean  @default(true)
+  cancellationDeadline Int?     // Heures avant RDV
+
+  // Status
+  status            String     @default("ACTIVE")
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+model FacilityManager {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  facilityId  String
+
+  // Accès override: docteurs individuels en plus de la structure
+  managedDoctorIds String[]  // Array de User IDs (docteurs spécifiques)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  facility    Facility  @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([facilityId])
+}
+
+model AvailabilityPreference {
+  id          String    @id @default(cuid())
+  ownerId     String    // User ID du créateur (DOCTOR ou FACILITY_MANAGER)
+  ownerType   String    // "DOCTOR" | "FACILITY_MANAGER"
+
+  name        String    // "Semaine standard", "Horaires d'été", etc.
+  description String?   @db.Text
+  isDefault   Boolean   @default(false)  // Une seule preference peut être par défaut
+
+  // Paramètres de base (horaires et jours)
+  daysOfWeek       Int[]    // [1,2,3,4,5]
+  startHour        Int      // 8
+  endHour          Int      // 18
+  slotDurationMins Int      // 30
+
+  // Capacité et types RDV
+  capacity            Int      @default(1)
+  allowedKindIds      String[] // IDs des AppointmentKind acceptés (vide = tous)
+
+  // Périodes d'exclusion
+  excludedTimes       String[] // ["12:00-13:00", "14:30-15:00"]
+
+  // Paramètres avancés
+  minBookingNotice    Int?     // Délai minimum en heures (ex: 24h)
+  maxBookingAdvance   Int?     // Délai maximum en jours (ex: 90 jours)
+  autoConfirm         Boolean  @default(true)
+  allowCancellation   Boolean  @default(true)
+  cancellationDeadline Int?    // Heures avant RDV
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([ownerId])
+  @@index([ownerType])
 }
 
 model AvailabilitySlot {
@@ -342,6 +433,7 @@ model Facility {
 
   // many-to-many implicite : côté Facility on doit garder juste Facility[]
   doctors     DoctorProfile[]  @relation("DoctorFacilities")
+  managers    FacilityManager[]
 }
 
 enum FacilityType {
