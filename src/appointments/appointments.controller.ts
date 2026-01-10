@@ -31,10 +31,55 @@ export class AppointmentsController {
     return this.svc.rescheduleAsOwner(id, userId, dto.newStart);
   }
 
-  @Post()
-  create(@Body() dto: { slotId: string; notes?: string }, @Req() req: any) {
-    // req.user = { userId, email, role }
-    return this.svc.create({ slotId: dto.slotId, patientId: req.user.userId, notes: dto.notes });
+  @Patch(':id')
+  async update(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() dto: {
+      slotStart?: string;
+      slotEnd?: string;
+      patientId?: string;
+      kindId?: string;
+      notes?: string;
+    }
+  ) {
+    const userId = req.user.id || req.user.userId;
+    return this.svc.updateAsOwner(id, userId, dto);
   }
-  
+
+  @Post()
+  async create(
+    @Body() dto: {
+      slotId?: string;
+      slotStart?: string;
+      slotEnd?: string;
+      patientId?: string;
+      kindId?: string;
+      notes?: string
+    },
+    @Req() req: any
+  ) {
+    const userId = req.user.userId || req.user.sub;
+    const role = req.user.role;
+
+    // Si slotStart et slotEnd sont fournis, créer d'abord le slot
+    if (dto.slotStart && dto.slotEnd) {
+      return this.svc.createWithNewSlot({
+        patientId: dto.patientId || userId,
+        slotStart: dto.slotStart,
+        slotEnd: dto.slotEnd,
+        kindId: dto.kindId,
+        notes: dto.notes,
+        doctorId: role === 'DOCTOR' ? userId : undefined,
+      });
+    }
+
+    // Sinon, utiliser le slotId existant
+    return this.svc.create({
+      slotId: dto.slotId!,
+      patientId: dto.patientId || userId,
+      notes: dto.notes
+    });
+  }
+
 }

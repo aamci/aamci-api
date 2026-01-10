@@ -1,5 +1,5 @@
 // src/users/users.controller.ts
-import { Body, Controller, Get, Put, Req, UseGuards, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Get, Put, Query, Req, UseGuards, BadRequestException } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UsersService } from './users.service';
 
@@ -7,6 +7,14 @@ import { UsersService } from './users.service';
 @UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private readonly users: UsersService) {}
+
+  @Get('users/search')
+  async search(@Query('q') query: string, @Query('role') role?: string) {
+    if (!query) {
+      throw new BadRequestException('Query parameter "q" is required');
+    }
+    return this.users.search(query, role as any);
+  }
 
   @Get('me')
   async me(@Req() req) {

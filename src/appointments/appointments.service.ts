@@ -56,12 +56,110 @@ export class AppointmentsService {
     });
   }
 
+  // créer un rendez-vous avec création automatique du slot
+  async createWithNewSlot(data: {
+    patientId: string;
+    slotStart: string;
+    slotEnd: string;
+    kindId?: string;
+    notes?: string;
+    doctorId?: string;
+  }) {
+    // Déterminer le doctorId (ownerId du slot)
+    let ownerId = data.doctorId;
+
+    if (!ownerId) {
+      // Si pas de doctorId, on ne peut pas créer le slot
+      throw new ForbiddenException('Un docteur doit être spécifié pour créer un slot');
+    }
+
+    const requestedStart = new Date(data.slotStart);
+    const requestedEnd = new Date(data.slotEnd);
+
+    // Vérifier s'il existe déjà un slot qui chevauche cette période
+    const existingSlots = await this.prisma.availabilitySlot.findMany({
+      where: {
+        ownerId: ownerId,
+        ownerType: 'DOCTOR',
+        OR: [
+          {
+            AND: [
+              { start: { lte: requestedStart } },
+              { end: { gt: requestedStart } },
+            ],
+          },
+          {
+            AND: [
+              { start: { lt: requestedEnd } },
+              { end: { gte: requestedEnd } },
+            ],
+          },
+          {
+            AND: [
+              { start: { gte: requestedStart } },
+              { end: { lte: requestedEnd } },
+            ],
+          },
+        ],
+      },
+      include: {
+        appointments: {
+          where: {
+            status: { not: 'CANCELLED' },
+          },
+        },
+      },
+    });
+
+    // Si un slot existe avec des rendez-vous actifs, refuser
+    const hasActiveAppointments = existingSlots.some(
+      (slot) => slot.appointments.length > 0
+    );
+
+    if (hasActiveAppointments) {
+      throw new ForbiddenException('Ce créneau est déjà réservé');
+    }
+
+    // Créer d'abord le slot
+    const slot = await this.prisma.availabilitySlot.create({
+      data: {
+        ownerId: ownerId,
+        ownerType: 'DOCTOR',
+        start: requestedStart,
+        end: requestedEnd,
+        capacity: 1,
+        status: 'ACTIVE',
+      },
+    });
+
+    // Puis créer le rendez-vous avec le slotId
+    return this.prisma.appointment.create({
+      data: {
+        slotId: slot.id,
+        patientId: data.patientId,
+        kindId: data.kindId,
+        notes: data.notes,
+        status: 'PENDING',
+        type: 'CONSULTATION',
+      },
+      include: {
+        slot: true,
+        patient: true,
+        kind: true,
+      },
+    });
+  }
+
   // ✅ DOCTOR / HOSPITAL change le statut d'un RDV qui est sur son slot
   async updateStatusAsOwner(appointmentId: string, requesterId: string, status: AppointmentStatus) {
     const appt = await this.prisma.appointment.findUnique({
       where: { id: appointmentId },
       include: {
-        slot: true,
+        slot: {
+          include: {
+            appointments: true,
+          },
+        },
       },
     });
     if (!appt) throw new NotFoundException('Rendez-vous introuvable');
@@ -71,13 +169,23 @@ export class AppointmentsService {
       throw new ForbiddenException('Vous ne pouvez modifier que les rendez-vous de vos créneaux.');
     }
 
-    return this.prisma.appointment.update({
+    // Mettre à jour le statut du rendez-vous
+    const updatedAppointment = await this.prisma.appointment.update({
       where: { id: appointmentId },
       data: { status },
     });
+
+    // Si le rendez-vous est annulé et c'est le seul rendez-vous sur ce slot, supprimer le slot
+    if (status === 'CANCELLED' && appt.slot.appointments.length === 1) {
+      await this.prisma.availabilitySlot.delete({
+        where: { id: appt.slot.id },
+      });
+    }
+
+    return updatedAppointment;
   }
 
-  // ✅ DOCTOR / HOSPITAL déplace un RDV (change l’heure de début du slot ou crée un nouveau slot selon ton modèle)
+  // ✅ DOCTOR / HOSPITAL déplace un RDV (change l'heure de début du slot ou crée un nouveau slot selon ton modèle)
   async rescheduleAsOwner(appointmentId: string, requesterId: string, newStartIso: string) {
     const appt = await this.prisma.appointment.findUnique({
       where: { id: appointmentId },
@@ -116,6 +224,141 @@ export class AppointmentsService {
       include: {
         patient: true,
         slot: true,
+      },
+    });
+  }
+
+  // ✅ DOCTOR / HOSPITAL modifie un RDV
+  async updateAsOwner(
+    appointmentId: string,
+    requesterId: string,
+    data: {
+      slotStart?: string;
+      slotEnd?: string;
+      patientId?: string;
+      kindId?: string;
+      notes?: string;
+    }
+  ) {
+    const appt = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: {
+        slot: {
+          include: {
+            appointments: true,
+          },
+        },
+      },
+    });
+    if (!appt) throw new NotFoundException('Rendez-vous introuvable');
+
+    if (appt.slot.ownerId !== requesterId) {
+      throw new ForbiddenException('Vous ne pouvez modifier que les rendez-vous de vos créneaux.');
+    }
+
+    // Si les horaires changent (déplacement), créer un nouveau slot
+    if (data.slotStart && data.slotEnd) {
+      const oldSlotId = appt.slot.id;
+      const hasOtherAppointments = appt.slot.appointments.length > 1;
+
+      const requestedStart = new Date(data.slotStart);
+      const requestedEnd = new Date(data.slotEnd);
+
+      // Vérifier s'il existe déjà un slot qui chevauche cette période
+      const existingSlots = await this.prisma.availabilitySlot.findMany({
+        where: {
+          ownerId: appt.slot.ownerId,
+          ownerType: 'DOCTOR',
+          OR: [
+            {
+              AND: [
+                { start: { lte: requestedStart } },
+                { end: { gt: requestedStart } },
+              ],
+            },
+            {
+              AND: [
+                { start: { lt: requestedEnd } },
+                { end: { gte: requestedEnd } },
+              ],
+            },
+            {
+              AND: [
+                { start: { gte: requestedStart } },
+                { end: { lte: requestedEnd } },
+              ],
+            },
+          ],
+        },
+        include: {
+          appointments: {
+            where: {
+              status: { not: 'CANCELLED' },
+            },
+          },
+        },
+      });
+
+      // Si un slot existe avec des rendez-vous actifs, refuser
+      const hasActiveAppointments = existingSlots.some(
+        (slot) => slot.appointments.length > 0
+      );
+
+      if (hasActiveAppointments) {
+        throw new ForbiddenException('Ce créneau est déjà réservé');
+      }
+
+      // Créer un nouveau slot pour le rendez-vous déplacé
+      const newSlot = await this.prisma.availabilitySlot.create({
+        data: {
+          ownerId: appt.slot.ownerId,
+          ownerType: appt.slot.ownerType,
+          start: requestedStart,
+          end: requestedEnd,
+          capacity: 1,
+          status: 'ACTIVE',
+        },
+      });
+
+      // Mettre à jour le rendez-vous avec le nouveau slot
+      const updateData: any = { slotId: newSlot.id };
+      if (data.patientId) updateData.patientId = data.patientId;
+      if (data.kindId) updateData.kindId = data.kindId;
+      if (data.notes !== undefined) updateData.notes = data.notes;
+
+      const updatedAppointment = await this.prisma.appointment.update({
+        where: { id: appointmentId },
+        data: updateData,
+        include: {
+          patient: true,
+          slot: true,
+          kind: true,
+        },
+      });
+
+      // Supprimer l'ancien slot seulement s'il n'a plus de rendez-vous
+      if (!hasOtherAppointments) {
+        await this.prisma.availabilitySlot.delete({
+          where: { id: oldSlotId },
+        });
+      }
+
+      return updatedAppointment;
+    }
+
+    // Sinon, juste mettre à jour les infos du rendez-vous
+    const updateData: any = {};
+    if (data.patientId) updateData.patientId = data.patientId;
+    if (data.kindId) updateData.kindId = data.kindId;
+    if (data.notes !== undefined) updateData.notes = data.notes;
+
+    return this.prisma.appointment.update({
+      where: { id: appointmentId },
+      data: updateData,
+      include: {
+        patient: true,
+        slot: true,
+        kind: true,
       },
     });
   }

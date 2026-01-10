@@ -55,6 +55,31 @@ export class UsersService {
     });
   }
 
+  async search(query: string, role?: Role) {
+    const where: any = {
+      OR: [
+        { fullName: { contains: query, mode: 'insensitive' } },
+        { email: { contains: query, mode: 'insensitive' } },
+      ],
+    };
+
+    if (role) {
+      where.role = role;
+    }
+
+    return this.prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        avatarUrl: true,
+        role: true,
+      },
+      take: 10,
+    });
+  }
+
   async findOrCreateOAuthUser(params: {
     email: string;
     fullName?: string;
