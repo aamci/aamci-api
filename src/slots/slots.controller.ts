@@ -38,7 +38,10 @@ export class SlotsController {
   @UseGuards(JwtAuthGuard)
   async mySlots(@Req() req) {
     const userId = req.user.id || req.user.userId;
-    return this.slots.findAllByOwner(userId);
+    console.log(`[SLOTS CONTROLLER] GET /slots/mine appelé pour userId: ${userId}`);
+    const result = await this.slots.findAllByOwner(userId);
+    console.log(`[SLOTS CONTROLLER] Retour de ${result.length} slots`);
+    return result;
   }
 
   // @Get()

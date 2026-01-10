@@ -8,6 +8,27 @@ type AppointmentStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'NO_SHOW';
 export class AppointmentsService {
   constructor(private prisma: PrismaService) {}
 
+  // Helper pour enregistrer l'historique
+  private async logHistory(
+    appointmentId: string,
+    action: string,
+    userId: string | null,
+    oldValue?: any,
+    newValue?: any,
+    description?: string
+  ) {
+    await this.prisma.appointmentHistory.create({
+      data: {
+        appointmentId,
+        action,
+        userId,
+        oldValue: oldValue ? JSON.stringify(oldValue) : null,
+        newValue: newValue ? JSON.stringify(newValue) : null,
+        description,
+      },
+    });
+  }
+
   list() {
     return this.prisma.appointment.findMany({
       take: 25,
@@ -133,7 +154,7 @@ export class AppointmentsService {
     });
 
     // Puis créer le rendez-vous avec le slotId
-    return this.prisma.appointment.create({
+    const appointment = await this.prisma.appointment.create({
       data: {
         slotId: slot.id,
         patientId: data.patientId,
@@ -148,6 +169,23 @@ export class AppointmentsService {
         kind: true,
       },
     });
+
+    // Enregistrer dans l'historique
+    await this.logHistory(
+      appointment.id,
+      'CREATED',
+      data.doctorId || null,
+      null,
+      {
+        slotStart: data.slotStart,
+        slotEnd: data.slotEnd,
+        patientId: data.patientId,
+        status: 'PENDING',
+      },
+      `Rendez-vous créé pour ${appointment.patient.fullName || 'le patient'}`
+    );
+
+    return appointment;
   }
 
   // ✅ DOCTOR / HOSPITAL change le statut d'un RDV qui est sur son slot
@@ -169,11 +207,23 @@ export class AppointmentsService {
       throw new ForbiddenException('Vous ne pouvez modifier que les rendez-vous de vos créneaux.');
     }
 
+    const oldStatus = appt.status;
+
     // Mettre à jour le statut du rendez-vous
     const updatedAppointment = await this.prisma.appointment.update({
       where: { id: appointmentId },
       data: { status },
     });
+
+    // Enregistrer dans l'historique
+    await this.logHistory(
+      appointmentId,
+      'STATUS_CHANGED',
+      requesterId,
+      { status: oldStatus },
+      { status },
+      `Statut changé de ${oldStatus} à ${status}`
+    );
 
     // Si le rendez-vous est annulé et c'est le seul rendez-vous sur ce slot, supprimer le slot
     if (status === 'CANCELLED' && appt.slot.appointments.length === 1) {
@@ -261,6 +311,10 @@ export class AppointmentsService {
       const oldSlotId = appt.slot.id;
       const hasOtherAppointments = appt.slot.appointments.length > 1;
 
+      console.log(`[MOVE] Début déplacement du rendez-vous ${appointmentId}`);
+      console.log(`[MOVE] Ancien slot ${oldSlotId} a ${appt.slot.appointments.length} rendez-vous`);
+      console.log(`[MOVE] hasOtherAppointments = ${hasOtherAppointments}`);
+
       const requestedStart = new Date(data.slotStart);
       const requestedEnd = new Date(data.slotEnd);
 
@@ -309,6 +363,7 @@ export class AppointmentsService {
       }
 
       // Créer un nouveau slot pour le rendez-vous déplacé
+      console.log(`[MOVE] Création d'un nouveau slot pour ${requestedStart.toISOString()} - ${requestedEnd.toISOString()}`);
       const newSlot = await this.prisma.availabilitySlot.create({
         data: {
           ownerId: appt.slot.ownerId,
@@ -319,12 +374,16 @@ export class AppointmentsService {
           status: 'ACTIVE',
         },
       });
+      console.log(`[MOVE] Nouveau slot créé avec ID: ${newSlot.id}`);
 
       // Mettre à jour le rendez-vous avec le nouveau slot
       const updateData: any = { slotId: newSlot.id };
       if (data.patientId) updateData.patientId = data.patientId;
       if (data.kindId) updateData.kindId = data.kindId;
       if (data.notes !== undefined) updateData.notes = data.notes;
+
+      console.log(`[MOVE] Mise à jour du rendez-vous ${appointmentId} avec nouveau slotId: ${newSlot.id}`);
+      console.log(`[MOVE] Ancien slotId était: ${oldSlotId}`);
 
       const updatedAppointment = await this.prisma.appointment.update({
         where: { id: appointmentId },
@@ -336,11 +395,54 @@ export class AppointmentsService {
         },
       });
 
+      console.log(`[MOVE] Rendez-vous mis à jour. Nouveau slotId confirmé: ${updatedAppointment.slotId}`);
+
+      // Enregistrer le déplacement dans l'historique
+      await this.logHistory(
+        appointmentId,
+        'RESCHEDULED',
+        requesterId,
+        {
+          slotStart: appt.slot.start,
+          slotEnd: appt.slot.end,
+        },
+        {
+          slotStart: data.slotStart,
+          slotEnd: data.slotEnd,
+        },
+        `Rendez-vous déplacé`
+      );
+
       // Supprimer l'ancien slot seulement s'il n'a plus de rendez-vous
+      // ⚠️ IMPORTANT: On recharge le slot pour vérifier qu'il n'a vraiment plus de rendez-vous
+      // (car le update précédent a changé le slotId du rendez-vous)
       if (!hasOtherAppointments) {
-        await this.prisma.availabilitySlot.delete({
+        console.log(`[MOVE] Tentative de suppression de l'ancien slot ${oldSlotId}`);
+
+        // Recharger le slot pour obtenir l'état à jour
+        const oldSlotCheck = await this.prisma.availabilitySlot.findUnique({
           where: { id: oldSlotId },
+          include: { appointments: true },
         });
+
+        console.log(`[MOVE] Ancien slot trouvé:`, {
+          id: oldSlotCheck?.id,
+          appointmentsCount: oldSlotCheck?.appointments?.length,
+          appointments: oldSlotCheck?.appointments?.map(a => a.id),
+        });
+
+        // Vérifier qu'il n'a vraiment aucun rendez-vous avant de supprimer
+        if (oldSlotCheck && oldSlotCheck.appointments.length === 0) {
+          console.log(`[MOVE] Suppression de l'ancien slot ${oldSlotId}...`);
+          await this.prisma.availabilitySlot.delete({
+            where: { id: oldSlotId },
+          });
+          console.log(`[MOVE] Ancien slot ${oldSlotId} supprimé avec succès`);
+        } else {
+          console.log(`[MOVE] Ancien slot ${oldSlotId} NON supprimé - a encore ${oldSlotCheck?.appointments?.length} rendez-vous`);
+        }
+      } else {
+        console.log(`[MOVE] Ancien slot ${oldSlotId} a d'autres rendez-vous - ne sera pas supprimé`);
       }
 
       return updatedAppointment;
@@ -352,7 +454,7 @@ export class AppointmentsService {
     if (data.kindId) updateData.kindId = data.kindId;
     if (data.notes !== undefined) updateData.notes = data.notes;
 
-    return this.prisma.appointment.update({
+    const updatedAppointment = await this.prisma.appointment.update({
       where: { id: appointmentId },
       data: updateData,
       include: {
@@ -360,6 +462,43 @@ export class AppointmentsService {
         slot: true,
         kind: true,
       },
+    });
+
+    // Enregistrer les modifications dans l'historique
+    if (Object.keys(updateData).length > 0) {
+      const oldValues: any = {};
+      if (data.patientId) oldValues.patientId = appt.patientId;
+      if (data.kindId) oldValues.kindId = appt.kindId;
+      if (data.notes !== undefined) oldValues.notes = appt.notes;
+
+      await this.logHistory(
+        appointmentId,
+        'UPDATED',
+        requesterId,
+        oldValues,
+        updateData,
+        `Rendez-vous modifié`
+      );
+    }
+
+    return updatedAppointment;
+  }
+
+  // Récupérer l'historique d'un rendez-vous
+  async getHistory(appointmentId: string) {
+    return this.prisma.appointmentHistory.findMany({
+      where: { appointmentId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 

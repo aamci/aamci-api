@@ -10,7 +10,9 @@ export class SlotsService {
    * Renvoie UNIQUEMENT ses créneaux avec rendez-vous (slots réservés)
    */
   async findAllByOwner(ownerId: string) {
-    return this.prisma.availabilitySlot.findMany({
+    console.log(`[SLOTS] Récupération des slots pour ownerId: ${ownerId}`);
+
+    const slots = await this.prisma.availabilitySlot.findMany({
       where: {
         ownerId,
         appointments: {
@@ -27,6 +29,16 @@ export class SlotsService {
         },
       },
     });
+
+    console.log(`[SLOTS] ${slots.length} slots trouvés avec rendez-vous`);
+    slots.forEach((slot, index) => {
+      console.log(`[SLOTS] Slot ${index + 1}: ${slot.id} - ${new Date(slot.start).toISOString()} - ${slot.appointments.length} RDV`);
+      slot.appointments.forEach((appt, i) => {
+        console.log(`  [SLOTS]   RDV ${i + 1}: ${appt.id} - Patient: ${appt.patient?.fullName || 'N/A'}`);
+      });
+    });
+
+    return slots;
   }
 
   /**

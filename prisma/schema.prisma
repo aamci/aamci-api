@@ -30,6 +30,7 @@ model User {
   facilityManager    FacilityManager?
   appointments       Appointment[]     @relation("PatientAppointments")
   appointmentKinds   AppointmentKind[]
+  appointmentHistory AppointmentHistory[] @relation("AppointmentHistoryUser")
   accounts           Account[]         // OAuth accounts
 
   // Medical Notes relations
@@ -62,10 +63,11 @@ model Appointment {
   kindId     String?
   kind       AppointmentKind?  @relation(fields: [kindId], references: [id])
 
-  slot         AvailabilitySlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
-  patient      User             @relation("PatientAppointments", fields: [patientId], references: [id])
+  slot         AvailabilitySlot    @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  patient      User                @relation("PatientAppointments", fields: [patientId], references: [id])
   transactions Transaction[]
   medicalNotes MedicalNote[]
+  history      AppointmentHistory[]
 }
 
 enum AppointmentStatus {
@@ -73,6 +75,25 @@ enum AppointmentStatus {
   CONFIRMED
   CANCELLED
   NO_SHOW
+}
+
+model AppointmentHistory {
+  id            String   @id @default(cuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  action        String   // CREATED, STATUS_CHANGED, RESCHEDULED, UPDATED, CANCELLED
+  oldValue      String?  @db.Text // JSON string of old values
+  newValue      String?  @db.Text // JSON string of new values
+  description   String?  @db.Text // Human-readable description
+
+  userId        String?  // Who made the change (doctor, patient, admin)
+  user          User?    @relation("AppointmentHistoryUser", fields: [userId], references: [id])
+
+  createdAt     DateTime @default(now())
+
+  @@index([appointmentId])
+  @@index([userId])
 }
 
 model Pharmacy {

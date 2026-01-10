@@ -44,7 +44,18 @@ export class AppointmentsController {
     }
   ) {
     const userId = req.user.id || req.user.userId;
-    return this.svc.updateAsOwner(id, userId, dto);
+    console.log(`[APPT CONTROLLER] PATCH /appointments/${id} appelé par userId: ${userId}`);
+    console.log(`[APPT CONTROLLER] DTO reçu:`, JSON.stringify(dto, null, 2));
+
+    const result = await this.svc.updateAsOwner(id, userId, dto);
+
+    console.log(`[APPT CONTROLLER] Rendez-vous mis à jour avec succès`);
+    return result;
+  }
+
+  @Get(':id/history')
+  async getHistory(@Param('id') id: string) {
+    return this.svc.getHistory(id);
   }
 
   @Post()
