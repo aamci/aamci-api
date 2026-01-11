@@ -229,6 +229,29 @@ model AvailabilityPreference {
   @@index([ownerType])
 }
 
+model DoctorAbsence {
+  id          String   @id @default(cuid())
+  doctorId    String   // User ID du médecin
+
+  // Période d'absence
+  startDate   DateTime
+  endDate     DateTime
+
+  // Type d'absence
+  type        String   // "VACATION", "SICK_LEAVE", "TRAINING", "PERSONAL", "OTHER"
+  reason      String?  @db.Text
+
+  // Options
+  blockSlots  Boolean  @default(true)  // Bloquer les créneaux existants
+  cancelAppointments Boolean @default(false) // Annuler les RDV existants
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([doctorId])
+  @@index([startDate, endDate])
+}
+
 model AvailabilitySlot {
   id        String   @id @default(cuid())
   ownerId   String

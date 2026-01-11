@@ -25,6 +25,7 @@ import { FacilitiesModule } from './facilities/facilities.module';
 import { AvailabilityRulesModule } from './availability-rules/availability-rules.module';
 import { FacilityManagersModule } from './facility-managers/facility-managers.module';
 import { AvailabilityPreferencesModule } from './availability-preferences/availability-preferences.module';
+import { DoctorAbsencesModule } from './doctor-absences/doctor-absences.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { AvailabilityPreferencesModule } from './availability-preferences/availa
     SlotsModule,
     AvailabilityRulesModule,
     AvailabilityPreferencesModule,
+    DoctorAbsencesModule,
     AppointmentKindsModule,
     DoctorProfilesModule,
     StatsModule,

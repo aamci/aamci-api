@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsInt, IsDateString, IsArray, Min, Max, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsInt, IsDateString, IsArray, Min, Max, IsOptional, IsString, IsBoolean } from 'class-validator';
 
 export class CreateAvailabilityRuleDto {
   @IsNotEmpty()
@@ -39,6 +39,36 @@ export class CreateAvailabilityRuleDto {
   @IsString({ each: true })
   @IsOptional()
   excludedTimes?: string[];
+
+  // Appointment types restrictions
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  allowedKindIds?: string[];
+
+  // Advanced parameters
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  minBookingNotice?: number;
+
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  maxBookingAdvance?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  autoConfirm?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  allowCancellation?: boolean;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  cancellationDeadline?: number;
 
   @IsString()
   @IsOptional()

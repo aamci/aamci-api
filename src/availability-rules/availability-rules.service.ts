@@ -24,6 +24,26 @@ export class AvailabilityRulesService {
       throw new BadRequestException('At least one day of the week must be selected');
     }
 
+    // Validate allowedKindIds if provided
+    if (dto.allowedKindIds && dto.allowedKindIds.length > 0) {
+      // Verify that all provided kind IDs exist and belong to the doctor (or are global)
+      const kinds = await this.prisma.appointmentKind.findMany({
+        where: {
+          id: { in: dto.allowedKindIds },
+          OR: [
+            { doctorId: ownerId },  // Kinds created by this doctor
+            { doctorId: null },     // Global kinds
+          ],
+        },
+      });
+
+      if (kinds.length !== dto.allowedKindIds.length) {
+        throw new BadRequestException(
+          'Some appointment kind IDs are invalid or do not belong to this doctor'
+        );
+      }
+    }
+
     // Create the rule
     return this.prisma.availabilityRule.create({
       data: {
@@ -37,6 +57,12 @@ export class AvailabilityRulesService {
         slotDurationMins: dto.slotDurationMins,
         capacity: dto.capacity,
         excludedTimes: dto.excludedTimes || [],
+        allowedKindIds: dto.allowedKindIds || [],
+        minBookingNotice: dto.minBookingNotice,
+        maxBookingAdvance: dto.maxBookingAdvance,
+        autoConfirm: dto.autoConfirm ?? true,
+        allowCancellation: dto.allowCancellation ?? true,
+        cancellationDeadline: dto.cancellationDeadline,
         status: 'ACTIVE',
       },
     });
@@ -89,6 +115,25 @@ export class AvailabilityRulesService {
       }
     }
 
+    // Validate allowedKindIds if provided
+    if (dto.allowedKindIds && dto.allowedKindIds.length > 0) {
+      const kinds = await this.prisma.appointmentKind.findMany({
+        where: {
+          id: { in: dto.allowedKindIds },
+          OR: [
+            { doctorId: ownerId },
+            { doctorId: null },
+          ],
+        },
+      });
+
+      if (kinds.length !== dto.allowedKindIds.length) {
+        throw new BadRequestException(
+          'Some appointment kind IDs are invalid or do not belong to this doctor'
+        );
+      }
+    }
+
     // Update the rule
     const updateData: any = {};
     if (dto.startDate) updateData.startDate = new Date(dto.startDate);
@@ -99,6 +144,12 @@ export class AvailabilityRulesService {
     if (dto.slotDurationMins) updateData.slotDurationMins = dto.slotDurationMins;
     if (dto.capacity) updateData.capacity = dto.capacity;
     if (dto.excludedTimes) updateData.excludedTimes = dto.excludedTimes;
+    if (dto.allowedKindIds !== undefined) updateData.allowedKindIds = dto.allowedKindIds;
+    if (dto.minBookingNotice !== undefined) updateData.minBookingNotice = dto.minBookingNotice;
+    if (dto.maxBookingAdvance !== undefined) updateData.maxBookingAdvance = dto.maxBookingAdvance;
+    if (dto.autoConfirm !== undefined) updateData.autoConfirm = dto.autoConfirm;
+    if (dto.allowCancellation !== undefined) updateData.allowCancellation = dto.allowCancellation;
+    if (dto.cancellationDeadline !== undefined) updateData.cancellationDeadline = dto.cancellationDeadline;
     if (dto.status) updateData.status = dto.status;
 
     return this.prisma.availabilityRule.update({
