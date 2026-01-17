@@ -37,6 +37,26 @@ export class DoctorAbsencesController {
     return this.service.findAllByDoctor(userId);
   }
 
+  @Get('mine/period')
+  async findByPeriod(
+    @Req() req,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    const userId = req.user?.id || req.user?.userId;
+    if (!userId) throw new UnauthorizedException('User not authenticated');
+
+    if (!startDate || !endDate) {
+      throw new UnauthorizedException('startDate and endDate are required');
+    }
+
+    return this.service.findAbsencesInPeriod(
+      userId,
+      new Date(startDate),
+      new Date(endDate),
+    );
+  }
+
   @Get(':id')
   async findOne(@Req() req, @Param('id') id: string) {
     const userId = req.user?.id || req.user?.userId;

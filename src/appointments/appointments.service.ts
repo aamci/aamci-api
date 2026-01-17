@@ -1,12 +1,18 @@
 // src/appointments/appointments.service.ts
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { DoctorAbsencesService } from '../doctor-absences/doctor-absences.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 type AppointmentStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'NO_SHOW';
 
 @Injectable()
 export class AppointmentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private doctorAbsencesService: DoctorAbsencesService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   // Helper pour enregistrer l'historique
   private async logHistory(
@@ -97,6 +103,18 @@ export class AppointmentsService {
     const requestedStart = new Date(data.slotStart);
     const requestedEnd = new Date(data.slotEnd);
 
+    // Vérifier si le médecin est absent pendant cette période
+    const isAbsent = await this.doctorAbsencesService.hasAbsenceOnDate(
+      ownerId,
+      requestedStart,
+    );
+
+    if (isAbsent) {
+      throw new BadRequestException(
+        'Le médecin est absent pendant cette période. Impossible de créer un rendez-vous.',
+      );
+    }
+
     // Vérifier s'il existe déjà un slot qui chevauche cette période
     const existingSlots = await this.prisma.availabilitySlot.findMany({
       where: {
@@ -153,14 +171,14 @@ export class AppointmentsService {
       },
     });
 
-    // Puis créer le rendez-vous avec le slotId
+    // Quand le médecin crée le RDV, il est directement CONFIRMED
     const appointment = await this.prisma.appointment.create({
       data: {
         slotId: slot.id,
         patientId: data.patientId,
         kindId: data.kindId,
         notes: data.notes,
-        status: 'PENDING',
+        status: 'CONFIRMED', // RDV créé par médecin = directement confirmé
         type: 'CONSULTATION',
       },
       include: {
@@ -180,10 +198,21 @@ export class AppointmentsService {
         slotStart: data.slotStart,
         slotEnd: data.slotEnd,
         patientId: data.patientId,
-        status: 'PENDING',
+        status: 'CONFIRMED',
       },
-      `Rendez-vous créé pour ${appointment.patient.fullName || 'le patient'}`
+      `Rendez-vous créé par le médecin pour ${appointment.patient.fullName || 'le patient'}`
     );
+
+    // Envoyer une notification au patient
+    try {
+      await this.notificationsService.createAppointmentConfirmed(
+        data.patientId,
+        appointment.id,
+        requestedStart,
+      );
+    } catch (error) {
+      console.error('Failed to send appointment notification:', error);
+    }
 
     return appointment;
   }
@@ -232,6 +261,25 @@ export class AppointmentsService {
       });
     }
 
+    // Envoyer une notification au patient selon le nouveau statut
+    try {
+      if (status === 'CONFIRMED') {
+        await this.notificationsService.createAppointmentConfirmed(
+          appt.patientId,
+          appointmentId,
+          new Date(appt.slot.start),
+        );
+      } else if (status === 'CANCELLED') {
+        await this.notificationsService.createAppointmentCancelled(
+          appt.patientId,
+          appointmentId,
+          new Date(appt.slot.start),
+        );
+      }
+    } catch (error) {
+      console.error('Failed to send status change notification:', error);
+    }
+
     return updatedAppointment;
   }
 
@@ -257,6 +305,7 @@ export class AppointmentsService {
     // ici je fais le plus simple : je déplace le slot lui-même
     // si tu veux réassigner à un autre slot, on fera une autre méthode
     const slot = appt.slot;
+    const oldStart = new Date(slot.start);
     const duration = new Date(slot.end).getTime() - new Date(slot.start).getTime();
     const newEnd = new Date(newStart.getTime() + duration);
 
@@ -267,6 +316,18 @@ export class AppointmentsService {
         end: newEnd,
       },
     });
+
+    // Envoyer une notification au patient
+    try {
+      await this.notificationsService.createAppointmentRescheduled(
+        appt.patientId,
+        appointmentId,
+        oldStart,
+        newStart,
+      );
+    } catch (error) {
+      console.error('Failed to send reschedule notification:', error);
+    }
 
     // on peut retourner le rendez-vous avec slot mis à jour
     return this.prisma.appointment.findUnique({
@@ -317,6 +378,18 @@ export class AppointmentsService {
 
       const requestedStart = new Date(data.slotStart);
       const requestedEnd = new Date(data.slotEnd);
+
+      // Vérifier si le médecin est absent pendant cette période
+      const isAbsent = await this.doctorAbsencesService.hasAbsenceOnDate(
+        appt.slot.ownerId,
+        requestedStart,
+      );
+
+      if (isAbsent) {
+        throw new BadRequestException(
+          'Le médecin est absent pendant cette période. Impossible de déplacer le rendez-vous.',
+        );
+      }
 
       // Vérifier s'il existe déjà un slot qui chevauche cette période
       const existingSlots = await this.prisma.availabilitySlot.findMany({
@@ -515,15 +588,59 @@ export class AppointmentsService {
     throw new ForbiddenException('Ce créneau est déjà réservé.');
   }
 
-  return this.prisma.appointment.create({
+  // 2. Vérifier le paramètre autoConfirmPatientBookings du médecin
+  const doctorProfile = await this.prisma.doctorProfile.findUnique({
+    where: { userId: slot.ownerId },
+  });
+
+  // Déterminer le statut initial selon le paramètre du médecin
+  // Par défaut (si pas de profile), on auto-confirme
+  const autoConfirm = doctorProfile?.autoConfirmPatientBookings ?? true;
+  const initialStatus = autoConfirm ? 'CONFIRMED' : 'PENDING';
+
+  const appointment = await this.prisma.appointment.create({
     data: {
       slotId,
       patientId,
       notes,
-      status: 'PENDING',
+      status: initialStatus,
       type: 'CONSULTATION',
     },
+    include: {
+      slot: true,
+      patient: true,
+    },
   });
+
+  // Enregistrer dans l'historique
+  await this.logHistory(
+    appointment.id,
+    'CREATED',
+    patientId,
+    null,
+    {
+      slotId,
+      patientId,
+      status: initialStatus,
+    },
+    `Rendez-vous réservé par le patient${autoConfirm ? ' (auto-confirmé)' : ''}`
+  );
+
+  // Envoyer une notification au patient
+  try {
+    if (autoConfirm) {
+      await this.notificationsService.createAppointmentConfirmed(
+        patientId,
+        appointment.id,
+        new Date(slot.start),
+      );
+    }
+    // Si pas auto-confirmé, on pourrait envoyer une notification "en attente de confirmation"
+  } catch (error) {
+    console.error('Failed to send appointment notification:', error);
+  }
+
+  return appointment;
 }
 
 }

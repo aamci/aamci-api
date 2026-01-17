@@ -31,11 +31,19 @@ model User {
   appointments       Appointment[]     @relation("PatientAppointments")
   appointmentKinds   AppointmentKind[]
   appointmentHistory AppointmentHistory[] @relation("AppointmentHistoryUser")
+  notifications      Notification[]
   accounts           Account[]         // OAuth accounts
 
   // Medical Notes relations
   patientNotes       MedicalNote[]     @relation("PatientNotes")
   doctorNotes        MedicalNote[]     @relation("DoctorNotes")
+
+  // Favorite Doctors relations
+  favoriteDoctors    FavoriteDoctor[]  @relation("PatientFavorites")
+  favoritedBy        FavoriteDoctor[]  @relation("DoctorFavorites")
+
+  // Medical Documents relations
+  medicalDocuments   MedicalDocument[] @relation("PatientDocuments")
 
   // Transactions relations (nommées pour éviter ambiguïté)
   doctorTransactions  Transaction[]     @relation("DoctorTransactions")
@@ -63,11 +71,12 @@ model Appointment {
   kindId     String?
   kind       AppointmentKind?  @relation(fields: [kindId], references: [id])
 
-  slot         AvailabilitySlot    @relation(fields: [slotId], references: [id], onDelete: Cascade)
-  patient      User                @relation("PatientAppointments", fields: [patientId], references: [id])
-  transactions Transaction[]
-  medicalNotes MedicalNote[]
-  history      AppointmentHistory[]
+  slot          AvailabilitySlot    @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  patient       User                @relation("PatientAppointments", fields: [patientId], references: [id])
+  transactions  Transaction[]
+  medicalNotes  MedicalNote[]
+  history       AppointmentHistory[]
+  notifications Notification[]
 }
 
 enum AppointmentStatus {
@@ -252,6 +261,40 @@ model DoctorAbsence {
   @@index([startDate, endDate])
 }
 
+model Notification {
+  id        String   @id @default(cuid())
+
+  // Destinataire
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Type et contenu
+  type      String   // "APPOINTMENT_REMINDER", "APPOINTMENT_CONFIRMED", "APPOINTMENT_CANCELLED", "APPOINTMENT_RESCHEDULED", "GENERAL"
+  title     String
+  message   String   @db.Text
+
+  // Métadonnées
+  relatedAppointmentId String?
+  relatedAppointment   Appointment? @relation(fields: [relatedAppointmentId], references: [id], onDelete: Cascade)
+
+  // État
+  read      Boolean  @default(false)
+  readAt    DateTime?
+
+  // Canaux
+  sentViaEmail Boolean @default(false)
+  emailSentAt  DateTime?
+  sentViaSms   Boolean @default(false)
+  smsSentAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, read])
+  @@index([createdAt])
+  @@index([relatedAppointmentId])
+}
+
 model AvailabilitySlot {
   id        String   @id @default(cuid())
   ownerId   String
@@ -287,6 +330,9 @@ model DoctorProfile {
   experiences  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  // Paramètres de confirmation des rendez-vous
+  autoConfirmPatientBookings Boolean @default(true)  // Si true, les RDV pris par patients sont auto-confirmés
 
   // many-to-many implicite avec Facility : NE PAS mettre "references" ici
   facilities   Facility[]  @relation("DoctorFacilities")
@@ -505,4 +551,72 @@ model Account {
 
   @@unique([provider, providerAccountId])
   @@index([userId])
+}
+
+// ==========================================
+// SYSTÈME DE FAVORIS - Médecins préférés
+// ==========================================
+
+model FavoriteDoctor {
+  id        String   @id @default(cuid())
+  patientId String   // Patient qui a ajouté le favori
+  doctorId  String   // Médecin ajouté en favori
+
+  createdAt DateTime @default(now())
+
+  patient   User     @relation("PatientFavorites", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor    User     @relation("DoctorFavorites", fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@unique([patientId, doctorId])  // Un patient ne peut ajouter un médecin qu'une seule fois
+  @@index([patientId])
+  @@index([doctorId])
+}
+
+// ==========================================
+// HISTORIQUE MÉDICAL - Documents médicaux
+// ==========================================
+
+model MedicalDocument {
+  id          String   @id @default(cuid())
+  patientId   String   // Patient propriétaire du document
+
+  // Informations du fichier
+  fileName    String
+  fileUrl     String   // URL du fichier stocké (S3, Cloudinary, etc.)
+  fileType    String   // MIME type (application/pdf, image/jpeg, etc.)
+  fileSize    Int      // Taille en bytes
+
+  // Classification
+  category    DocumentCategory @default(OTHER)
+  title       String?
+  description String?  @db.Text
+
+  // Métadonnées
+  documentDate DateTime?  // Date du document (ex: date de l'ordonnance)
+  doctorId     String?    // Médecin associé (si applicable)
+  appointmentId String?   // Rendez-vous associé (si applicable)
+
+  // Confidentialité
+  isPrivate   Boolean  @default(false)  // Si true, seul le patient peut voir
+  sharedWith  String[] // IDs des médecins avec qui le document est partagé
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  patient     User     @relation("PatientDocuments", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([category])
+  @@index([documentDate])
+}
+
+enum DocumentCategory {
+  PRESCRIPTION      // Ordonnance
+  LAB_RESULT        // Résultat d'analyse
+  IMAGING           // Imagerie (radio, IRM, scanner)
+  MEDICAL_REPORT    // Compte-rendu médical
+  VACCINATION       // Carnet de vaccination
+  CERTIFICATE       // Certificat médical
+  INSURANCE         // Document assurance
+  OTHER             // Autre
 }

@@ -182,6 +182,43 @@ export class DoctorAbsencesService {
   }
 
   /**
+   * Find all absences for a doctor in a specific period
+   */
+  async findAbsencesInPeriod(
+    doctorId: string,
+    startDate: Date,
+    endDate: Date,
+  ) {
+    return this.prisma.doctorAbsence.findMany({
+      where: {
+        doctorId,
+        blockSlots: true,
+        OR: [
+          {
+            AND: [
+              { startDate: { lte: startDate } },
+              { endDate: { gte: startDate } },
+            ],
+          },
+          {
+            AND: [
+              { startDate: { lte: endDate } },
+              { endDate: { gte: endDate } },
+            ],
+          },
+          {
+            AND: [
+              { startDate: { gte: startDate } },
+              { endDate: { lte: endDate } },
+            ],
+          },
+        ],
+      },
+      orderBy: { startDate: 'asc' },
+    });
+  }
+
+  /**
    * Cancel all appointments in a period
    */
   private async cancelAppointmentsInPeriod(

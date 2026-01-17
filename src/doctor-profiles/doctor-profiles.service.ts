@@ -28,6 +28,7 @@ export class DoctorProfilesService {
     presentation: string | null;
     formations: string | null;
     experiences: string | null;
+    autoConfirmPatientBookings: boolean;
   }>) {
     await this.prisma.doctorProfile.upsert({
       where: { userId },

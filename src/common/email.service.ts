@@ -232,4 +232,397 @@ export class EmailService {
       throw new Error('Failed to send password reset email');
     }
   }
+
+  async sendAppointmentReminder(
+    email: string,
+    patientName: string,
+    doctorName: string,
+    appointmentDate: Date,
+    appointmentType: string,
+  ) {
+    const formattedDate = appointmentDate.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const mailOptions = {
+      from: `"Plateforme Santé" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Rappel de rendez-vous - Health Platform',
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+              }
+              .header {
+                background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+                color: white;
+                padding: 30px;
+                text-align: center;
+                border-radius: 10px 10px 0 0;
+              }
+              .content {
+                background: #f9f9f9;
+                padding: 30px;
+                border: 1px solid #ddd;
+                border-top: none;
+              }
+              .appointment-box {
+                background-color: #f0fdfa;
+                padding: 20px;
+                border-radius: 8px;
+                margin: 20px 0;
+                border-left: 4px solid #0d9488;
+              }
+              .footer {
+                text-align: center;
+                padding: 20px;
+                color: #666;
+                font-size: 12px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>🔔 Rappel de rendez-vous</h1>
+            </div>
+            <div class="content">
+              <p>Bonjour ${patientName},</p>
+              <p>Nous vous rappelons que vous avez un rendez-vous demain :</p>
+              <div class="appointment-box">
+                <p style="margin: 8px 0;"><strong>📅 Date et heure :</strong> ${formattedDate}</p>
+                <p style="margin: 8px 0;"><strong>👨‍⚕️ Médecin :</strong> Dr. ${doctorName}</p>
+                <p style="margin: 8px 0;"><strong>🏥 Type de consultation :</strong> ${appointmentType}</p>
+              </div>
+              <p>Si vous ne pouvez pas honorer ce rendez-vous, merci de nous prévenir au plus tôt via votre espace patient.</p>
+              <p>Cordialement,<br>L'équipe Health Platform</p>
+            </div>
+            <div class="footer">
+              <p>© ${new Date().getFullYear()} Plateforme Santé. Tous droits réservés.</p>
+            </div>
+          </body>
+        </html>
+      `,
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Appointment reminder email sent to ${email}: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      this.logger.error(`Failed to send appointment reminder to ${email}:`, error);
+      throw new Error('Failed to send appointment reminder');
+    }
+  }
+
+  async sendAppointmentConfirmation(
+    email: string,
+    patientName: string,
+    doctorName: string,
+    appointmentDate: Date,
+    appointmentType: string,
+  ) {
+    const formattedDate = appointmentDate.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const mailOptions = {
+      from: `"Plateforme Santé" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Confirmation de rendez-vous - Health Platform',
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+              }
+              .header {
+                background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+                color: white;
+                padding: 30px;
+                text-align: center;
+                border-radius: 10px 10px 0 0;
+              }
+              .content {
+                background: #f9f9f9;
+                padding: 30px;
+                border: 1px solid #ddd;
+                border-top: none;
+              }
+              .appointment-box {
+                background-color: #f0fdfa;
+                padding: 20px;
+                border-radius: 8px;
+                margin: 20px 0;
+                border-left: 4px solid #0d9488;
+              }
+              .footer {
+                text-align: center;
+                padding: 20px;
+                color: #666;
+                font-size: 12px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>✅ Rendez-vous confirmé</h1>
+            </div>
+            <div class="content">
+              <p>Bonjour ${patientName},</p>
+              <p>Votre rendez-vous a bien été confirmé :</p>
+              <div class="appointment-box">
+                <p style="margin: 8px 0;"><strong>📅 Date et heure :</strong> ${formattedDate}</p>
+                <p style="margin: 8px 0;"><strong>👨‍⚕️ Médecin :</strong> Dr. ${doctorName}</p>
+                <p style="margin: 8px 0;"><strong>🏥 Type de consultation :</strong> ${appointmentType}</p>
+              </div>
+              <p>Merci de votre confiance.</p>
+              <p>Cordialement,<br>L'équipe Health Platform</p>
+            </div>
+            <div class="footer">
+              <p>© ${new Date().getFullYear()} Plateforme Santé. Tous droits réservés.</p>
+            </div>
+          </body>
+        </html>
+      `,
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Appointment confirmation email sent to ${email}: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      this.logger.error(`Failed to send appointment confirmation to ${email}:`, error);
+      throw new Error('Failed to send appointment confirmation');
+    }
+  }
+
+  async sendAppointmentCancellation(
+    email: string,
+    patientName: string,
+    doctorName: string,
+    appointmentDate: Date,
+    appointmentType: string,
+    reason?: string,
+  ) {
+    const formattedDate = appointmentDate.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const mailOptions = {
+      from: `"Plateforme Santé" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Annulation de rendez-vous - Health Platform',
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+              }
+              .header {
+                background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+                color: white;
+                padding: 30px;
+                text-align: center;
+                border-radius: 10px 10px 0 0;
+              }
+              .content {
+                background: #f9f9f9;
+                padding: 30px;
+                border: 1px solid #ddd;
+                border-top: none;
+              }
+              .appointment-box {
+                background-color: #fef2f2;
+                padding: 20px;
+                border-radius: 8px;
+                margin: 20px 0;
+                border-left: 4px solid #dc2626;
+              }
+              .footer {
+                text-align: center;
+                padding: 20px;
+                color: #666;
+                font-size: 12px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>❌ Rendez-vous annulé</h1>
+            </div>
+            <div class="content">
+              <p>Bonjour ${patientName},</p>
+              <p>Votre rendez-vous a été annulé :</p>
+              <div class="appointment-box">
+                <p style="margin: 8px 0;"><strong>📅 Date et heure :</strong> ${formattedDate}</p>
+                <p style="margin: 8px 0;"><strong>👨‍⚕️ Médecin :</strong> Dr. ${doctorName}</p>
+                <p style="margin: 8px 0;"><strong>🏥 Type de consultation :</strong> ${appointmentType}</p>
+                ${reason ? `<p style="margin: 8px 0;"><strong>💬 Raison :</strong> ${reason}</p>` : ''}
+              </div>
+              <p>Vous pouvez prendre un nouveau rendez-vous sur notre plateforme.</p>
+              <p>Cordialement,<br>L'équipe Health Platform</p>
+            </div>
+            <div class="footer">
+              <p>© ${new Date().getFullYear()} Plateforme Santé. Tous droits réservés.</p>
+            </div>
+          </body>
+        </html>
+      `,
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Appointment cancellation email sent to ${email}: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      this.logger.error(`Failed to send appointment cancellation to ${email}:`, error);
+      throw new Error('Failed to send appointment cancellation');
+    }
+  }
+
+  async sendAppointmentRescheduled(
+    email: string,
+    patientName: string,
+    doctorName: string,
+    oldDate: Date,
+    newDate: Date,
+    appointmentType: string,
+  ) {
+    const formattedOldDate = oldDate.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const formattedNewDate = newDate.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const mailOptions = {
+      from: `"Plateforme Santé" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Rendez-vous reporté - Health Platform',
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+              }
+              .header {
+                background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
+                color: white;
+                padding: 30px;
+                text-align: center;
+                border-radius: 10px 10px 0 0;
+              }
+              .content {
+                background: #f9f9f9;
+                padding: 30px;
+                border: 1px solid #ddd;
+                border-top: none;
+              }
+              .appointment-box {
+                background-color: #fff7ed;
+                padding: 20px;
+                border-radius: 8px;
+                margin: 20px 0;
+                border-left: 4px solid #ea580c;
+              }
+              .footer {
+                text-align: center;
+                padding: 20px;
+                color: #666;
+                font-size: 12px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>🔄 Rendez-vous reporté</h1>
+            </div>
+            <div class="content">
+              <p>Bonjour ${patientName},</p>
+              <p>Votre rendez-vous a été reporté :</p>
+              <div class="appointment-box">
+                <p style="margin: 8px 0;"><strong>📅 Ancienne date :</strong> <del>${formattedOldDate}</del></p>
+                <p style="margin: 8px 0;"><strong>📅 Nouvelle date :</strong> <span style="color: #ea580c; font-weight: bold;">${formattedNewDate}</span></p>
+                <p style="margin: 8px 0;"><strong>👨‍⚕️ Médecin :</strong> Dr. ${doctorName}</p>
+                <p style="margin: 8px 0;"><strong>🏥 Type de consultation :</strong> ${appointmentType}</p>
+              </div>
+              <p>Merci de votre compréhension.</p>
+              <p>Cordialement,<br>L'équipe Health Platform</p>
+            </div>
+            <div class="footer">
+              <p>© ${new Date().getFullYear()} Plateforme Santé. Tous droits réservés.</p>
+            </div>
+          </body>
+        </html>
+      `,
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Appointment rescheduled email sent to ${email}: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      this.logger.error(`Failed to send appointment rescheduled email to ${email}:`, error);
+      throw new Error('Failed to send appointment rescheduled email');
+    }
+  }
 }

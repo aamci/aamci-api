@@ -26,6 +26,10 @@ import { AvailabilityRulesModule } from './availability-rules/availability-rules
 import { FacilityManagersModule } from './facility-managers/facility-managers.module';
 import { AvailabilityPreferencesModule } from './availability-preferences/availability-preferences.module';
 import { DoctorAbsencesModule } from './doctor-absences/doctor-absences.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { FavoritesModule } from './favorites/favorites.module';
+import { MedicalDocumentsModule } from './medical-documents/medical-documents.module';
+import { MedicalNotesModule } from './medical-notes/medical-notes.module';
 
 @Module({
   imports: [
@@ -45,6 +49,7 @@ import { DoctorAbsencesModule } from './doctor-absences/doctor-absences.module';
     AvailabilityRulesModule,
     AvailabilityPreferencesModule,
     DoctorAbsencesModule,
+    NotificationsModule,
     AppointmentKindsModule,
     DoctorProfilesModule,
     StatsModule,
@@ -52,6 +57,9 @@ import { DoctorAbsencesModule } from './doctor-absences/doctor-absences.module';
     PaymentsModule,
     FacilitiesModule,
     FacilityManagersModule,
+    FavoritesModule,
+    MedicalDocumentsModule,
+    MedicalNotesModule,
   ],
   controllers: [HealthController],
   providers: [
