@@ -49,6 +49,14 @@ model User {
   doctorTransactions  Transaction[]     @relation("DoctorTransactions")
   patientTransactions Transaction[]     @relation("PatientTransactions")
   wallet              Wallet?
+
+  // Invoices relations
+  doctorInvoices      Invoice[]         @relation("DoctorInvoices")
+  patientInvoices     Invoice[]         @relation("PatientInvoices")
+
+  // Tasks relations
+  doctorTasks         Task[]            @relation("DoctorTasks")
+  patientTasks        Task[]            @relation("PatientTasks")
 }
 
 enum Role {
@@ -70,6 +78,12 @@ model Appointment {
   type       String?
   kindId     String?
   kind       AppointmentKind?  @relation(fields: [kindId], references: [id])
+
+  // Téléconsultation
+  videoSessionId   String?   @unique  // ID unique pour la session vidéo
+  videoRoomUrl     String?   // URL de la salle de visio (pour intégration externe)
+  videoStartedAt   DateTime? // Début de la session vidéo
+  videoEndedAt     DateTime? // Fin de la session vidéo
 
   slot          AvailabilitySlot    @relation(fields: [slotId], references: [id], onDelete: Cascade)
   patient       User                @relation("PatientAppointments", fields: [patientId], references: [id])
@@ -435,6 +449,11 @@ model AppointmentKind {
   doctorId    String?
   doctor      User?   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
 
+  // Téléconsultation
+  isTelemedicine  Boolean @default(false)  // Si true, c'est une téléconsultation
+  durationMins    Int     @default(30)     // Durée en minutes
+  color           String? // Couleur pour l'affichage
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -489,6 +508,7 @@ model WalletMovement {
   amount    Decimal      @db.Decimal(10, 2)
   type      MovementType
   createdAt DateTime     @default(now())
+  description String?
 
   wallet Wallet @relation(fields: [walletId], references: [id])
 }
@@ -503,6 +523,73 @@ enum MovementType {
 enum PaymentProvider {
   AIRTEL_MONEY
   STRIPE
+}
+
+// ==========================================
+// SYSTÈME DE FACTURATION
+// ==========================================
+
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique  // ex: FAC-2024-0001
+
+  // Parties
+  doctorId      String
+  patientId     String
+  appointmentId String?       // Lié à un RDV si applicable
+
+  // Montants
+  subtotal      Decimal       @db.Decimal(10, 2)  // Montant HT
+  taxRate       Decimal       @default(0) @db.Decimal(5, 2)  // Taux de TVA (ex: 20.00)
+  taxAmount     Decimal       @default(0) @db.Decimal(10, 2)  // Montant TVA
+  total         Decimal       @db.Decimal(10, 2)  // Montant TTC
+
+  // Statut
+  status        InvoiceStatus @default(DRAFT)
+
+  // Dates
+  issueDate     DateTime      @default(now())
+  dueDate       DateTime?     // Date d'échéance
+  paidAt        DateTime?     // Date de paiement
+
+  // Infos complémentaires
+  notes         String?       @db.Text
+  paymentMethod String?       // Mode de paiement utilisé
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  doctor        User          @relation("DoctorInvoices", fields: [doctorId], references: [id])
+  patient       User          @relation("PatientInvoices", fields: [patientId], references: [id])
+  items         InvoiceItem[]
+
+  @@index([doctorId])
+  @@index([patientId])
+  @@index([status])
+  @@index([issueDate])
+}
+
+model InvoiceItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+
+  description String
+  quantity    Int     @default(1)
+  unitPrice   Decimal @db.Decimal(10, 2)
+  total       Decimal @db.Decimal(10, 2)
+
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+enum InvoiceStatus {
+  DRAFT       // Brouillon
+  SENT        // Envoyée au patient
+  PAID        // Payée
+  CANCELLED   // Annulée
+  OVERDUE     // En retard de paiement
 }
 
 model Facility {
@@ -619,4 +706,70 @@ enum DocumentCategory {
   CERTIFICATE       // Certificat médical
   INSURANCE         // Document assurance
   OTHER             // Autre
+}
+
+// ==========================================
+// SYSTÈME DE TÂCHES - Todo list médecin
+// ==========================================
+
+model Task {
+  id          String     @id @default(cuid())
+  doctorId    String     // Médecin propriétaire de la tâche
+  patientId   String?    // Patient associé (optionnel)
+
+  // Contenu
+  title       String
+  description String?    @db.Text
+
+  // Priorité et statut
+  priority    TaskPriority @default(MEDIUM)
+  status      TaskStatus   @default(TODO)
+
+  // Dates
+  dueDate     DateTime?  // Date d'échéance
+  completedAt DateTime?  // Date de completion
+
+  // Catégorisation
+  category    TaskCategory @default(OTHER)
+  tags        String[]   // Tags personnalisés
+
+  // Rappel
+  reminderAt  DateTime?  // Rappel programmé
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  doctor      User       @relation("DoctorTasks", fields: [doctorId], references: [id], onDelete: Cascade)
+  patient     User?      @relation("PatientTasks", fields: [patientId], references: [id], onDelete: SetNull)
+
+  @@index([doctorId])
+  @@index([patientId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([priority])
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO        // À faire
+  IN_PROGRESS // En cours
+  DONE        // Terminé
+  CANCELLED   // Annulé
+}
+
+enum TaskCategory {
+  FOLLOW_UP       // Suivi patient
+  CALL            // Appel à passer
+  PRESCRIPTION    // Prescription à renouveler
+  LAB_REVIEW      // Résultats à consulter
+  ADMIN           // Tâche administrative
+  APPOINTMENT     // Lié à un RDV
+  OTHER           // Autre
 }

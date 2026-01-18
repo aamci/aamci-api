@@ -575,6 +575,132 @@ export class AppointmentsService {
     });
   }
 
+  // Récupérer un rendez-vous par ID pour un utilisateur (vérifie les permissions)
+  async findByIdForUser(appointmentId: string, userId: string) {
+    const appt = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: {
+        slot: true,
+        patient: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true,
+            avatarUrl: true,
+          },
+        },
+        kind: true,
+      },
+    });
+
+    if (!appt) throw new NotFoundException('Rendez-vous introuvable');
+
+    // Vérifier que l'utilisateur a le droit de voir ce rendez-vous
+    const isDoctor = appt.slot.ownerId === userId;
+    const isPatient = appt.patientId === userId;
+
+    if (!isDoctor && !isPatient) {
+      throw new ForbiddenException('Vous n\'avez pas accès à ce rendez-vous');
+    }
+
+    return appt;
+  }
+
+  // Démarrer une session vidéo pour une téléconsultation
+  async startVideoSession(appointmentId: string, userId: string) {
+    const appt = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { slot: true, kind: true },
+    });
+
+    if (!appt) throw new NotFoundException('Rendez-vous introuvable');
+
+    // Vérifier que c'est le médecin du rendez-vous
+    if (appt.slot.ownerId !== userId) {
+      throw new ForbiddenException('Seul le médecin peut démarrer la session vidéo');
+    }
+
+    // Générer un ID de session unique
+    const videoSessionId = `visio-${appointmentId}-${Date.now()}`;
+
+    const updated = await this.prisma.appointment.update({
+      where: { id: appointmentId },
+      data: {
+        videoSessionId,
+        videoStartedAt: new Date(),
+      },
+      include: {
+        slot: true,
+        patient: true,
+        kind: true,
+      },
+    });
+
+    // Enregistrer dans l'historique
+    await this.logHistory(
+      appointmentId,
+      'VIDEO_STARTED',
+      userId,
+      null,
+      { videoSessionId },
+      'Session vidéo démarrée'
+    );
+
+    return updated;
+  }
+
+  // Terminer une session vidéo
+  async endVideoSession(appointmentId: string, userId: string, notes?: string) {
+    const appt = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { slot: true },
+    });
+
+    if (!appt) throw new NotFoundException('Rendez-vous introuvable');
+
+    // Vérifier que c'est le médecin du rendez-vous
+    if (appt.slot.ownerId !== userId) {
+      throw new ForbiddenException('Seul le médecin peut terminer la session vidéo');
+    }
+
+    const updateData: any = {
+      videoEndedAt: new Date(),
+    };
+
+    // Mettre à jour les notes si fournies
+    if (notes !== undefined) {
+      updateData.notes = notes;
+    }
+
+    const updated = await this.prisma.appointment.update({
+      where: { id: appointmentId },
+      data: updateData,
+      include: {
+        slot: true,
+        patient: true,
+        kind: true,
+      },
+    });
+
+    // Calculer la durée de la session
+    const duration = appt.videoStartedAt
+      ? Math.round((new Date().getTime() - new Date(appt.videoStartedAt).getTime()) / 1000 / 60)
+      : 0;
+
+    // Enregistrer dans l'historique
+    await this.logHistory(
+      appointmentId,
+      'VIDEO_ENDED',
+      userId,
+      { videoStartedAt: appt.videoStartedAt },
+      { videoEndedAt: updateData.videoEndedAt, durationMinutes: duration },
+      `Session vidéo terminée (durée: ${duration} minutes)`
+    );
+
+    return updated;
+  }
+
   async createForPatient(patientId: string, slotId: string, notes?: string) {
   // 1. vérifier que le slot est encore libre
   const slot = await this.prisma.availabilitySlot.findUnique({

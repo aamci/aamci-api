@@ -30,6 +30,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { MedicalDocumentsModule } from './medical-documents/medical-documents.module';
 import { MedicalNotesModule } from './medical-notes/medical-notes.module';
+import { InvoicesModule } from './invoices/invoices.module';
+import { TasksModule } from './tasks/tasks.module';
 
 @Module({
   imports: [
@@ -60,6 +62,8 @@ import { MedicalNotesModule } from './medical-notes/medical-notes.module';
     FavoritesModule,
     MedicalDocumentsModule,
     MedicalNotesModule,
+    InvoicesModule,
+    TasksModule,
   ],
   controllers: [HealthController],
   providers: [

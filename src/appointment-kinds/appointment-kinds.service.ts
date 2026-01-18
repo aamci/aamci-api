@@ -22,13 +22,72 @@ export class AppointmentKindsService {
     return globals;
   }
 
-  async createForDoctor(userId: string, dto: { name: string; description?: string }) {
+  async createForDoctor(
+    userId: string,
+    dto: {
+      name: string;
+      description?: string;
+      isTelemedicine?: boolean;
+      durationMins?: number;
+      color?: string;
+    }
+  ) {
     return this.prisma.appointmentKind.create({
       data: {
         name: dto.name,
         description: dto.description,
         doctorId: userId,
+        isTelemedicine: dto.isTelemedicine ?? false,
+        durationMins: dto.durationMins ?? 30,
+        color: dto.color,
       },
+    });
+  }
+
+  async updateForDoctor(
+    userId: string,
+    kindId: string,
+    dto: {
+      name?: string;
+      description?: string;
+      isTelemedicine?: boolean;
+      durationMins?: number;
+      color?: string;
+    }
+  ) {
+    // Vérifier que le kind appartient au médecin
+    const kind = await this.prisma.appointmentKind.findFirst({
+      where: { id: kindId, doctorId: userId },
+    });
+
+    if (!kind) {
+      throw new Error('Type de consultation non trouvé ou non autorisé');
+    }
+
+    return this.prisma.appointmentKind.update({
+      where: { id: kindId },
+      data: {
+        name: dto.name,
+        description: dto.description,
+        isTelemedicine: dto.isTelemedicine,
+        durationMins: dto.durationMins,
+        color: dto.color,
+      },
+    });
+  }
+
+  async deleteForDoctor(userId: string, kindId: string) {
+    // Vérifier que le kind appartient au médecin
+    const kind = await this.prisma.appointmentKind.findFirst({
+      where: { id: kindId, doctorId: userId },
+    });
+
+    if (!kind) {
+      throw new Error('Type de consultation non trouvé ou non autorisé');
+    }
+
+    return this.prisma.appointmentKind.delete({
+      where: { id: kindId },
     });
   }
 }

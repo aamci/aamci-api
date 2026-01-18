@@ -58,6 +58,28 @@ export class AppointmentsController {
     return this.svc.getHistory(id);
   }
 
+  @Get(':id')
+  async getById(@Param('id') id: string, @Req() req) {
+    const userId = req.user.id || req.user.userId;
+    return this.svc.findByIdForUser(id, userId);
+  }
+
+  @Post(':id/start-video')
+  async startVideoSession(@Param('id') id: string, @Req() req) {
+    const userId = req.user.id || req.user.userId;
+    return this.svc.startVideoSession(id, userId);
+  }
+
+  @Post(':id/end-video')
+  async endVideoSession(
+    @Param('id') id: string,
+    @Body() dto: { notes?: string },
+    @Req() req
+  ) {
+    const userId = req.user.id || req.user.userId;
+    return this.svc.endVideoSession(id, userId, dto.notes);
+  }
+
   @Post()
   async create(
     @Body() dto: {
