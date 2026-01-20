@@ -57,6 +57,21 @@ model User {
   // Tasks relations
   doctorTasks         Task[]            @relation("DoctorTasks")
   patientTasks        Task[]            @relation("PatientTasks")
+
+  // Dossier patient relations
+  patientMedicalHistory   MedicalHistory[]       @relation("PatientMedicalHistory")
+  doctorMedicalHistory    MedicalHistory[]       @relation("DoctorMedicalHistory")
+  patientVaccinations     Vaccination[]          @relation("PatientVaccinations")
+  patientTreatments       Treatment[]            @relation("PatientTreatments")
+  doctorTreatments        Treatment[]            @relation("DoctorTreatments")
+  patientBiometrics       BiometricMeasurement[] @relation("PatientBiometrics")
+  doctorBiometrics        BiometricMeasurement[] @relation("DoctorBiometrics")
+  patientObservations     ClinicalObservation[]  @relation("PatientObservations")
+  doctorObservations      ClinicalObservation[]  @relation("DoctorObservations")
+  patientLabResults       LabResult[]            @relation("PatientLabResults")
+  doctorLabResults        LabResult[]            @relation("DoctorLabResults")
+  emergencyContacts       EmergencyContact[]     @relation("PatientEmergencyContacts")
+  patientConsents         PatientConsent[]       @relation("PatientConsents")
 }
 
 enum Role {
@@ -772,4 +787,350 @@ enum TaskCategory {
   ADMIN           // Tâche administrative
   APPOINTMENT     // Lié à un RDV
   OTHER           // Autre
+}
+
+// ==========================================
+// DOSSIER PATIENT COMPLET
+// ==========================================
+
+// Antécédents médicaux
+model MedicalHistory {
+  id          String   @id @default(cuid())
+  patientId   String
+
+  // Type d'antécédent
+  category    MedicalHistoryCategory
+
+  // Détails
+  title       String              // Ex: "Diabète type 2", "Hernie inguinale"
+  description String?  @db.Text   // Description détaillée
+  severity    String?             // Gravité (légère, modérée, sévère)
+
+  // Dates
+  diagnosedAt DateTime?           // Date de diagnostic
+  resolvedAt  DateTime?           // Date de guérison (si applicable)
+
+  // Statut
+  isActive    Boolean  @default(true)  // Toujours actif ou résolu
+
+  // Métadonnées
+  doctorId    String?             // Médecin qui a enregistré
+  notes       String?  @db.Text
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  patient     User     @relation("PatientMedicalHistory", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor      User?    @relation("DoctorMedicalHistory", fields: [doctorId], references: [id], onDelete: SetNull)
+
+  @@index([patientId])
+  @@index([category])
+  @@index([isActive])
+}
+
+enum MedicalHistoryCategory {
+  ALLERGY            // Allergies
+  MEDICAL            // Antécédents médicaux
+  SURGICAL           // Antécédents chirurgicaux
+  FAMILY             // Antécédents familiaux
+  CARDIOVASCULAR     // Appareil cardiovasculaire
+  LIFESTYLE          // Mode de vie (tabac, alcool, etc.)
+}
+
+// Vaccinations
+model Vaccination {
+  id            String   @id @default(cuid())
+  patientId     String
+
+  // Vaccin
+  vaccineName   String              // Ex: "Vaccin anti-grippal", "DTP"
+  vaccineType   String?             // Type/Marque
+  lotNumber     String?             // Numéro de lot
+  manufacturer  String?             // Fabricant
+
+  // Administration
+  doseNumber    Int      @default(1)  // Numéro de dose (1ère, 2ème, rappel)
+  injectionSite String?             // Site d'injection (bras gauche, cuisse droite, etc.)
+
+  // Dates
+  administeredAt DateTime           // Date d'administration
+  nextDoseAt     DateTime?          // Prochain rappel prévu
+  expiresAt      DateTime?          // Date d'expiration du vaccin
+
+  // Professionnel de santé
+  administeredBy String?            // Nom du praticien
+  facilityName   String?            // Établissement
+
+  // Notes
+  notes         String?  @db.Text
+  sideEffects   String?  @db.Text   // Effets secondaires observés
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  patient       User     @relation("PatientVaccinations", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([administeredAt])
+  @@index([vaccineName])
+}
+
+// Traitements en cours
+model Treatment {
+  id            String   @id @default(cuid())
+  patientId     String
+  doctorId      String?            // Médecin prescripteur
+
+  // Médicament
+  medicationName String            // Nom du médicament
+  genericName    String?           // Nom générique
+  dosage         String            // Ex: "500mg", "10mg/ml"
+
+  // Posologie
+  frequency      String            // Ex: "2 fois par jour", "1 le matin"
+  route          String?           // Voie d'administration (orale, injectable, etc.)
+  instructions   String? @db.Text  // Instructions spéciales
+
+  // Durée
+  startDate      DateTime          // Date de début
+  endDate        DateTime?         // Date de fin prévue
+
+  // Statut
+  status         TreatmentStatus @default(ACTIVE)
+
+  // Raison
+  indication     String? @db.Text  // Indication (pourquoi ce traitement)
+
+  // Métadonnées
+  prescriptionId String?           // Référence ordonnance
+  renewalCount   Int      @default(0)  // Nombre de renouvellements
+
+  notes          String?  @db.Text
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  patient        User     @relation("PatientTreatments", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor         User?    @relation("DoctorTreatments", fields: [doctorId], references: [id], onDelete: SetNull)
+
+  @@index([patientId])
+  @@index([status])
+  @@index([startDate])
+}
+
+enum TreatmentStatus {
+  ACTIVE      // En cours
+  PAUSED      // Suspendu temporairement
+  STOPPED     // Arrêté
+  COMPLETED   // Terminé
+}
+
+// Mesures biométriques
+model BiometricMeasurement {
+  id          String   @id @default(cuid())
+  patientId   String
+  doctorId    String?  // Médecin qui a pris la mesure (optionnel si auto-mesure)
+
+  // Type de mesure
+  type        BiometricType
+
+  // Valeurs
+  value       Float               // Valeur principale
+  valueSecondary Float?           // Valeur secondaire (ex: tension diastolique)
+  unit        String              // Unité (kg, cm, mmHg, °C, etc.)
+
+  // Contexte
+  measuredAt  DateTime @default(now())
+  location    String?             // Lieu de mesure
+  method      String?             // Méthode de mesure
+
+  // Notes
+  notes       String?  @db.Text
+  isAbnormal  Boolean  @default(false)  // Valeur anormale
+
+  createdAt   DateTime @default(now())
+
+  patient     User     @relation("PatientBiometrics", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor      User?    @relation("DoctorBiometrics", fields: [doctorId], references: [id], onDelete: SetNull)
+
+  @@index([patientId])
+  @@index([type])
+  @@index([measuredAt])
+}
+
+enum BiometricType {
+  WEIGHT              // Poids (kg)
+  HEIGHT              // Taille (cm)
+  BLOOD_PRESSURE      // Tension artérielle (mmHg)
+  HEART_RATE          // Fréquence cardiaque (bpm)
+  TEMPERATURE         // Température (°C)
+  OXYGEN_SATURATION   // Saturation O2 (%)
+  BLOOD_GLUCOSE       // Glycémie (g/L ou mg/dL)
+  BMI                 // IMC
+  WAIST_CIRCUMFERENCE // Tour de taille (cm)
+  OTHER               // Autre
+}
+
+// Observations cliniques
+model ClinicalObservation {
+  id          String   @id @default(cuid())
+  patientId   String
+  doctorId    String
+
+  // Contenu
+  title       String?
+  content     String   @db.Text    // Contenu de l'observation
+
+  // Catégorie
+  category    ObservationCategory @default(GENERAL)
+
+  // Urgence
+  isUrgent    Boolean  @default(false)
+
+  // Lien avec consultation
+  appointmentId String?
+
+  // Date de l'observation
+  observedAt  DateTime @default(now())
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  patient     User     @relation("PatientObservations", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor      User     @relation("DoctorObservations", fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([observedAt])
+  @@index([category])
+}
+
+enum ObservationCategory {
+  GENERAL             // Observation générale
+  VITAL_SIGNS         // Signes vitaux
+  SYMPTOMS            // Symptômes
+  EXAMINATION         // Examen clinique
+  EVOLUTION           // Évolution/Suivi
+  ALERT               // Alerte médicale
+}
+
+// Résultats de laboratoire
+model LabResult {
+  id          String   @id @default(cuid())
+  patientId   String
+
+  // Test
+  testName    String              // Nom de l'analyse
+  testCode    String?             // Code du test
+  category    LabCategory @default(OTHER)
+
+  // Résultat
+  value       String              // Valeur (peut être texte ou nombre)
+  unit        String?             // Unité
+  normalRange String?             // Plage normale (ex: "4.0-6.0")
+
+  // Interprétation
+  interpretation String?          // Normal, Anormal, Critique
+  isAbnormal  Boolean  @default(false)
+
+  // Dates
+  sampleDate  DateTime?           // Date du prélèvement
+  resultDate  DateTime            // Date du résultat
+
+  // Laboratoire
+  labName     String?             // Nom du laboratoire
+  labRef      String?             // Référence labo
+
+  // Médecin prescripteur
+  doctorId    String?
+
+  notes       String?  @db.Text
+
+  createdAt   DateTime @default(now())
+
+  patient     User     @relation("PatientLabResults", fields: [patientId], references: [id], onDelete: Cascade)
+  doctor      User?    @relation("DoctorLabResults", fields: [doctorId], references: [id], onDelete: SetNull)
+
+  @@index([patientId])
+  @@index([testName])
+  @@index([resultDate])
+  @@index([category])
+}
+
+enum LabCategory {
+  HEMATOLOGY      // Hématologie
+  BIOCHEMISTRY    // Biochimie
+  IMMUNOLOGY      // Immunologie
+  MICROBIOLOGY    // Microbiologie
+  URINALYSIS      // Analyse d'urine
+  HORMONES        // Hormones
+  OTHER           // Autre
+}
+
+// Contacts d'urgence
+model EmergencyContact {
+  id          String   @id @default(cuid())
+  patientId   String
+
+  // Identité
+  fullName    String
+  relationship String             // Parent, Conjoint, Ami, etc.
+
+  // Contact
+  phone       String
+  phoneSecondary String?
+  email       String?
+
+  // Priorité
+  isPrimary   Boolean  @default(false)  // Contact principal
+  priority    Int      @default(1)      // Ordre de priorité
+
+  notes       String?  @db.Text
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  patient     User     @relation("PatientEmergencyContacts", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+}
+
+// Consentements patient
+model PatientConsent {
+  id          String   @id @default(cuid())
+  patientId   String
+
+  // Type de consentement
+  type        ConsentType
+
+  // Statut
+  granted     Boolean  @default(false)
+
+  // Dates
+  grantedAt   DateTime?
+  revokedAt   DateTime?
+  expiresAt   DateTime?           // Expiration du consentement
+
+  // Signatures
+  signedAt    DateTime?
+  ipAddress   String?             // IP lors de la signature
+
+  notes       String?  @db.Text
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  patient     User     @relation("PatientConsents", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@unique([patientId, type])
+  @@index([patientId])
+  @@index([type])
+}
+
+enum ConsentType {
+  CARE                // Consentement aux soins
+  DATA_SHARING        // Partage de données médicales
+  TELECONSULTATION    // Téléconsultation
+  EMAIL_COMMUNICATION // Communications électroniques
+  RESEARCH            // Recherche clinique
 }

@@ -32,6 +32,7 @@ import { MedicalDocumentsModule } from './medical-documents/medical-documents.mo
 import { MedicalNotesModule } from './medical-notes/medical-notes.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { TasksModule } from './tasks/tasks.module';
+import { PatientRecordModule } from './patient-record/patient-record.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { TasksModule } from './tasks/tasks.module';
     MedicalNotesModule,
     InvoicesModule,
     TasksModule,
+    PatientRecordModule,
   ],
   controllers: [HealthController],
   providers: [
