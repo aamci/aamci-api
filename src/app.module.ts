@@ -31,6 +31,7 @@ import { FavoritesModule } from './favorites/favorites.module';
 import { MedicalDocumentsModule } from './medical-documents/medical-documents.module';
 import { MedicalNotesModule } from './medical-notes/medical-notes.module';
 import { InvoicesModule } from './invoices/invoices.module';
+import { PrescriptionsModule } from './prescriptions/prescriptions.module';
 import { TasksModule } from './tasks/tasks.module';
 import { PatientRecordModule } from './patient-record/patient-record.module';
 
@@ -64,6 +65,7 @@ import { PatientRecordModule } from './patient-record/patient-record.module';
     MedicalDocumentsModule,
     MedicalNotesModule,
     InvoicesModule,
+    PrescriptionsModule,
     TasksModule,
     PatientRecordModule,
   ],

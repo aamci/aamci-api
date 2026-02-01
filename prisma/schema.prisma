@@ -54,6 +54,10 @@ model User {
   doctorInvoices      Invoice[]         @relation("DoctorInvoices")
   patientInvoices     Invoice[]         @relation("PatientInvoices")
 
+  // Prescriptions relations
+  doctorPrescriptions  Prescription[]    @relation("DoctorPrescriptions")
+  patientPrescriptions Prescription[]    @relation("PatientPrescriptions")
+
   // Tasks relations
   doctorTasks         Task[]            @relation("DoctorTasks")
   patientTasks        Task[]            @relation("PatientTasks")
@@ -605,6 +609,76 @@ enum InvoiceStatus {
   PAID        // Payée
   CANCELLED   // Annulée
   OVERDUE     // En retard de paiement
+}
+
+// ==========================================
+// SYSTÈME DE PRESCRIPTIONS
+// ==========================================
+
+model Prescription {
+  id                String        @id @default(cuid())
+  prescriptionNumber String       @unique  // ex: ORD-2024-0001
+
+  // Parties
+  doctorId          String
+  patientId         String
+  appointmentId     String?       // Lié à un RDV si applicable
+
+  // Dates
+  issueDate         DateTime      @default(now())
+  validUntil        DateTime?     // Date de validité
+
+  // Informations médicales
+  diagnosis         String?       @db.Text  // Diagnostic / Motif
+  generalInstructions String?     @db.Text  // Instructions générales
+
+  // Statut
+  status            PrescriptionStatus @default(DRAFT)
+
+  // Métadonnées
+  notes             String?       @db.Text
+  renewalCount      Int           @default(0)  // Nombre de renouvellements
+  renewedFromId     String?       // ID de la prescription originale si c'est un renouvellement
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  // Relations
+  doctor            User          @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
+  patient           User          @relation("PatientPrescriptions", fields: [patientId], references: [id])
+  medications       PrescriptionMedication[]
+
+  @@index([doctorId])
+  @@index([patientId])
+  @@index([status])
+  @@index([issueDate])
+}
+
+model PrescriptionMedication {
+  id              String       @id @default(cuid())
+  prescriptionId  String
+
+  // Médicament
+  name            String       // Nom du médicament
+  dosage          String?      // Ex: "500mg", "10mg/ml"
+  frequency       String?      // Ex: "2 fois par jour", "1 le matin"
+  duration        String?      // Ex: "7 jours", "1 semaine"
+  instructions    String?      @db.Text  // Instructions spéciales
+  quantity        Int?         // Quantité à délivrer
+
+  createdAt       DateTime     @default(now())
+
+  prescription    Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  @@index([prescriptionId])
+}
+
+enum PrescriptionStatus {
+  DRAFT       // Brouillon
+  ACTIVE      // Active (signée et délivrée)
+  EXPIRED     // Expirée
+  CANCELLED   // Annulée
+  DISPENSED   // Délivrée en pharmacie
 }
 
 model Facility {
