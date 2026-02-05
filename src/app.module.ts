@@ -42,6 +42,8 @@ import { TeamModule } from './team/team.module';
 import { CalendarSyncModule } from './calendar-sync/calendar-sync.module';
 import { PrescriptionTemplatesModule } from './prescription-templates/prescription-templates.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { ConsultationsModule } from './consultations/consultations.module';
+import { MessagesModule } from './messages/messages.module';
 
 @Module({
   imports: [
@@ -84,6 +86,8 @@ import { AnalyticsModule } from './analytics/analytics.module';
     CalendarSyncModule,
     PrescriptionTemplatesModule,
     AnalyticsModule,
+    ConsultationsModule,
+    MessagesModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -89,6 +89,16 @@ export class PrescriptionsService {
     return this.prisma.prescription.findMany({
       where,
       include: {
+        patient: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true,
+            birthdate: true,
+            sex: true,
+          },
+        },
         medications: true,
       },
       orderBy: { issueDate: 'desc' },
