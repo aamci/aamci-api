@@ -34,6 +34,14 @@ import { InvoicesModule } from './invoices/invoices.module';
 import { PrescriptionsModule } from './prescriptions/prescriptions.module';
 import { TasksModule } from './tasks/tasks.module';
 import { PatientRecordModule } from './patient-record/patient-record.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { HealthRecordsModule } from './health-records/health-records.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
+import { TwoFactorModule } from './two-factor/two-factor.module';
+import { TeamModule } from './team/team.module';
+import { CalendarSyncModule } from './calendar-sync/calendar-sync.module';
+import { PrescriptionTemplatesModule } from './prescription-templates/prescription-templates.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -68,6 +76,14 @@ import { PatientRecordModule } from './patient-record/patient-record.module';
     PrescriptionsModule,
     TasksModule,
     PatientRecordModule,
+    ReviewsModule,
+    HealthRecordsModule,
+    WebhooksModule,
+    TwoFactorModule,
+    TeamModule,
+    CalendarSyncModule,
+    PrescriptionTemplatesModule,
+    AnalyticsModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -1,0 +1,24 @@
+import { IsString, IsUrl, IsArray, IsEnum, ArrayNotEmpty } from 'class-validator';
+
+export enum WebhookEventType {
+  APPOINTMENT_CREATED = 'APPOINTMENT_CREATED',
+  APPOINTMENT_CONFIRMED = 'APPOINTMENT_CONFIRMED',
+  APPOINTMENT_CANCELLED = 'APPOINTMENT_CANCELLED',
+  APPOINTMENT_RESCHEDULED = 'APPOINTMENT_RESCHEDULED',
+  APPOINTMENT_REMINDER = 'APPOINTMENT_REMINDER',
+  PAYMENT_RECEIVED = 'PAYMENT_RECEIVED',
+  PAYMENT_FAILED = 'PAYMENT_FAILED',
+  REVIEW_CREATED = 'REVIEW_CREATED',
+  MESSAGE_RECEIVED = 'MESSAGE_RECEIVED',
+  PRESCRIPTION_CREATED = 'PRESCRIPTION_CREATED',
+}
+
+export class CreateWebhookDto {
+  @IsUrl()
+  url: string;
+
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  events: string[];
+}

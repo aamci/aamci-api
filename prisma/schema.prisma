@@ -76,6 +76,18 @@ model User {
   doctorLabResults        LabResult[]            @relation("DoctorLabResults")
   emergencyContacts       EmergencyContact[]     @relation("PatientEmergencyContacts")
   patientConsents         PatientConsent[]       @relation("PatientConsents")
+
+  // Reviews & Ratings
+  patientReviews          DoctorReview[]         @relation("PatientReviews")
+
+  // Health Record
+  healthRecord            HealthRecord?          @relation("PatientHealthRecord")
+
+  // Two-Factor Auth
+  twoFactorAuth           TwoFactorAuth?
+
+  // Webhooks
+  webhookSubscriptions    WebhookSubscription[]
 }
 
 enum Role {
@@ -110,6 +122,7 @@ model Appointment {
   medicalNotes  MedicalNote[]
   history       AppointmentHistory[]
   notifications Notification[]
+  review        DoctorReview?
 }
 
 enum AppointmentStatus {
@@ -370,6 +383,13 @@ model DoctorProfile {
   // many-to-many implicite avec Facility : NE PAS mettre "references" ici
   facilities   Facility[]  @relation("DoctorFacilities")
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Reviews & Ratings
+  reviews      DoctorReview[] @relation("DoctorReviews")
+
+  // Aggregated rating (computed)
+  averageRating Float?   @default(0)
+  totalReviews  Int      @default(0)
 }
 
 model PatientProfile {
@@ -1207,4 +1227,418 @@ enum ConsentType {
   TELECONSULTATION    // Téléconsultation
   EMAIL_COMMUNICATION // Communications électroniques
   RESEARCH            // Recherche clinique
+}
+
+// ============================================
+// REVIEWS & RATINGS
+// ============================================
+
+model DoctorReview {
+  id            String   @id @default(cuid())
+  doctorId      String
+  patientId     String
+  appointmentId String?  @unique  // Optionnel, lié à un RDV spécifique
+
+  // Notes (1-5)
+  overallRating     Int      // Note globale
+  punctualityRating Int?     // Ponctualité
+  professionalismRating Int? // Professionnalisme
+  communicationRating Int?   // Communication
+
+  // Commentaire
+  title         String?
+  comment       String?  @db.Text
+
+  // Modération
+  isPublic      Boolean  @default(true)
+  isVerified    Boolean  @default(false)  // Vérifié par le système
+  isApproved    Boolean  @default(true)   // Approuvé par modération
+  moderatedAt   DateTime?
+  moderationNote String?
+
+  // Réponse du médecin
+  doctorResponse    String?  @db.Text
+  doctorRespondedAt DateTime?
+
+  // Signalement
+  reportCount   Int      @default(0)
+  isReported    Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  doctor        DoctorProfile @relation("DoctorReviews", fields: [doctorId], references: [id], onDelete: Cascade)
+  patient       User          @relation("PatientReviews", fields: [patientId], references: [id], onDelete: Cascade)
+  appointment   Appointment?  @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@unique([doctorId, patientId, appointmentId])
+  @@index([doctorId])
+  @@index([patientId])
+  @@index([overallRating])
+}
+
+// ============================================
+// HEALTH RECORDS (Dossier Médical Complet)
+// ============================================
+
+model HealthRecord {
+  id          String   @id @default(cuid())
+  patientId   String   @unique
+
+  // Informations générales
+  bloodType       String?   // A+, A-, B+, B-, AB+, AB-, O+, O-
+  rhesus          String?
+  heightCm        Float?
+  weightKg        Float?
+
+  // Allergies
+  allergies       String[]  // Liste des allergies
+  allergyDetails  String?   @db.Text  // Détails JSON
+
+  // Antécédents
+  medicalHistory      String?  @db.Text  // JSON des antécédents médicaux
+  surgicalHistory     String?  @db.Text  // JSON des chirurgies
+  familyHistory       String?  @db.Text  // JSON des antécédents familiaux
+
+  // Mode de vie
+  smokingStatus       String?  // NEVER, FORMER, CURRENT
+  alcoholConsumption  String?  // NONE, OCCASIONAL, MODERATE, HEAVY
+  physicalActivity    String?  // SEDENTARY, LIGHT, MODERATE, ACTIVE
+
+  // Traitements en cours
+  currentMedications  String?  @db.Text  // JSON
+
+  // Vaccinations
+  vaccinationRecord   String?  @db.Text  // JSON
+
+  // Documents
+  notes               String?  @db.Text
+
+  lastUpdatedBy   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  patient         User     @relation("PatientHealthRecord", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+}
+
+// ============================================
+// TWO-FACTOR AUTHENTICATION
+// ============================================
+
+model TwoFactorAuth {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+
+  // TOTP (Time-based One-Time Password)
+  secret      String?           // Encrypted TOTP secret
+  isEnabled   Boolean  @default(false)
+
+  // Backup codes
+  backupCodes String[]          // Hashed backup codes
+
+  // SMS/Email verification
+  phoneNumber String?
+  phoneVerified Boolean @default(false)
+
+  // Recovery
+  recoveryEmail     String?
+  recoveryEmailVerified Boolean @default(false)
+
+  // Audit
+  lastUsedAt        DateTime?
+  failedAttempts    Int      @default(0)
+  lockedUntil       DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// WEBHOOK SUBSCRIPTIONS
+// ============================================
+
+model WebhookSubscription {
+  id          String   @id @default(cuid())
+  userId      String
+
+  // Configuration
+  url         String           // URL du webhook
+  secret      String           // Secret pour signature HMAC
+
+  // Événements souscrits
+  events      String[]         // APPOINTMENT_CREATED, APPOINTMENT_CANCELLED, etc.
+
+  // Status
+  isActive    Boolean  @default(true)
+
+  // Statistiques
+  successCount    Int      @default(0)
+  failureCount    Int      @default(0)
+  lastTriggeredAt DateTime?
+  lastSuccessAt   DateTime?
+  lastFailureAt   DateTime?
+  lastError       String?  @db.Text
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries  WebhookDelivery[]
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+model WebhookDelivery {
+  id              String   @id @default(cuid())
+  subscriptionId  String
+
+  // Payload
+  event           String
+  payload         String   @db.Text  // JSON
+
+  // Delivery status
+  status          String   // PENDING, SUCCESS, FAILED
+  statusCode      Int?
+  responseBody    String?  @db.Text
+  errorMessage    String?  @db.Text
+
+  // Timing
+  attemptCount    Int      @default(1)
+  nextRetryAt     DateTime?
+  deliveredAt     DateTime?
+
+  createdAt       DateTime @default(now())
+
+  subscription    WebhookSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ==========================================
+// TEAM MANAGEMENT
+// ==========================================
+
+model TeamMember {
+  id          String   @id @default(cuid())
+  ownerId     String   // Le médecin/propriétaire de l'équipe
+  userId      String?  // L'utilisateur (null si invitation en attente)
+
+  // Informations membre
+  email       String
+  fullName    String
+  phone       String?
+  role        TeamRole
+  status      TeamMemberStatus @default(PENDING)
+
+  // Permissions (JSON array of permission IDs)
+  permissions String[]
+
+  // Dates
+  invitedAt   DateTime @default(now())
+  joinedAt    DateTime?
+  lastActiveAt DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([ownerId, email])
+  @@index([ownerId])
+  @@index([userId])
+  @@index([status])
+}
+
+enum TeamRole {
+  SECRETARY
+  NURSE
+  ASSISTANT
+  INTERN
+}
+
+enum TeamMemberStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+  REVOKED
+}
+
+// ==========================================
+// CALENDAR SYNC
+// ==========================================
+
+model CalendarConnection {
+  id          String   @id @default(cuid())
+  userId      String
+
+  // Provider info
+  provider    CalendarProvider
+  providerAccountId String
+  providerEmail     String?
+
+  // OAuth tokens
+  accessToken     String   @db.Text
+  refreshToken    String?  @db.Text
+  tokenExpiresAt  DateTime?
+
+  // Sync settings
+  isActive        Boolean  @default(true)
+  syncDirection   SyncDirection @default(BOTH)
+  showBusyOnly    Boolean  @default(false)
+  autoSync        Boolean  @default(true)
+  syncIntervalMins Int     @default(15)
+
+  // Selected calendars (JSON array of calendar IDs)
+  selectedCalendars String[]
+
+  // Status
+  lastSyncAt      DateTime?
+  lastSyncStatus  String?
+  errorMessage    String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, provider])
+  @@index([userId])
+  @@index([provider])
+}
+
+enum CalendarProvider {
+  GOOGLE
+  OUTLOOK
+  APPLE
+}
+
+enum SyncDirection {
+  IMPORT
+  EXPORT
+  BOTH
+}
+
+// ==========================================
+// PRESCRIPTION TEMPLATES
+// ==========================================
+
+model PrescriptionTemplate {
+  id          String   @id @default(cuid())
+  doctorId    String
+
+  // Template info
+  name        String
+  description String?
+  category    String   // general, cardio, gastro, etc.
+
+  // Notes
+  notes       String?  @db.Text
+
+  // Usage tracking
+  isFavorite  Boolean  @default(false)
+  usageCount  Int      @default(0)
+  lastUsedAt  DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  medications PrescriptionTemplateMedication[]
+
+  @@index([doctorId])
+  @@index([category])
+  @@index([isFavorite])
+}
+
+model PrescriptionTemplateMedication {
+  id          String   @id @default(cuid())
+  templateId  String
+
+  // Medication info
+  name        String
+  dosage      String
+  frequency   String
+  duration    String
+  instructions String?
+
+  // Order
+  sortOrder   Int      @default(0)
+
+  createdAt   DateTime @default(now())
+
+  template    PrescriptionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+}
+
+// ==========================================
+// ANALYTICS & GOALS
+// ==========================================
+
+model AnalyticsGoal {
+  id          String   @id @default(cuid())
+  userId      String
+
+  // Period
+  year        Int
+  month       Int      // 1-12, 0 for yearly goal
+
+  // Goals
+  revenueGoal         Float?
+  appointmentsGoal    Int?
+  newPatientsGoal     Int?
+
+  // Actuals (cached for performance)
+  revenueActual       Float    @default(0)
+  appointmentsActual  Int      @default(0)
+  newPatientsActual   Int      @default(0)
+
+  // Metrics (cached)
+  retentionRate       Float?
+  noShowRate          Float?
+  cancellationRate    Float?
+
+  lastCalculatedAt    DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, year, month])
+  @@index([userId])
+  @@index([year, month])
+}
+
+model AnalyticsSnapshot {
+  id          String   @id @default(cuid())
+  userId      String
+
+  // Period
+  date        DateTime @db.Date
+  periodType  AnalyticsPeriodType
+
+  // Metrics
+  totalPatients       Int      @default(0)
+  newPatients         Int      @default(0)
+  returningPatients   Int      @default(0)
+  totalAppointments   Int      @default(0)
+  completedAppointments Int    @default(0)
+  cancelledAppointments Int    @default(0)
+  noShows             Int      @default(0)
+  totalRevenue        Float    @default(0)
+  avgConsultationTime Float?
+
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, date, periodType])
+  @@index([userId])
+  @@index([date])
+  @@index([periodType])
+}
+
+enum AnalyticsPeriodType {
+  DAILY
+  WEEKLY
+  MONTHLY
 }
