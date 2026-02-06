@@ -6,6 +6,130 @@ export class SlotsService {
   constructor(private prisma: PrismaService) {}
 
   /**
+   * 🌍 Génère les créneaux disponibles à partir des AvailabilityRules
+   * Utilisé par le patient pour voir le calendrier du médecin
+   */
+  async generateAvailableSlots(doctorId: string, from?: Date, to?: Date) {
+    const now = new Date();
+    const rangeStart = from && from > now ? from : now;
+    const rangeEnd = to || new Date(now.getTime() + 5 * 7 * 24 * 60 * 60 * 1000); // 5 semaines
+
+    // 1. Récupérer les règles actives du médecin
+    const rules = await this.prisma.availabilityRule.findMany({
+      where: {
+        ownerId: doctorId,
+        status: 'ACTIVE',
+        endDate: { gte: rangeStart },
+        startDate: { lte: rangeEnd },
+      },
+    });
+
+    if (rules.length === 0) return [];
+
+    // 2. Récupérer les absences qui bloquent les créneaux
+    const absences = await this.prisma.doctorAbsence.findMany({
+      where: {
+        doctorId,
+        blockSlots: true,
+        endDate: { gte: rangeStart },
+        startDate: { lte: rangeEnd },
+      },
+    });
+
+    // 3. Récupérer les rendez-vous existants (non annulés) pour filtrer
+    const existingAppointments = await this.prisma.appointment.findMany({
+      where: {
+        status: { not: 'CANCELLED' },
+        slot: {
+          ownerId: doctorId,
+          start: { gte: rangeStart },
+          end: { lte: rangeEnd },
+        },
+      },
+      include: { slot: true },
+    });
+
+    // Créer un set des heures de début déjà réservées
+    const bookedTimes = new Set(
+      existingAppointments.map((a) => new Date(a.slot.start).toISOString()),
+    );
+
+    // 4. Générer les créneaux à partir des règles
+    const slots: any[] = [];
+
+    for (const rule of rules) {
+      const ruleStart = new Date(rule.startDate);
+      const ruleEnd = new Date(rule.endDate);
+
+      const effectiveStart = new Date(Math.max(rangeStart.getTime(), ruleStart.getTime()));
+      effectiveStart.setHours(0, 0, 0, 0);
+      const effectiveEnd = new Date(Math.min(rangeEnd.getTime(), ruleEnd.getTime()));
+
+      const currentDate = new Date(effectiveStart);
+
+      while (currentDate <= effectiveEnd) {
+        const dayOfWeek = currentDate.getDay() === 0 ? 7 : currentDate.getDay();
+
+        // Vérifier si ce jour est dans les jours actifs de la règle
+        if (rule.daysOfWeek.includes(dayOfWeek)) {
+          // Vérifier les absences
+          const isDuringAbsence = absences.some((a) => {
+            const absStart = new Date(a.startDate);
+            absStart.setHours(0, 0, 0, 0);
+            const absEnd = new Date(a.endDate);
+            absEnd.setHours(23, 59, 59, 999);
+            return currentDate >= absStart && currentDate <= absEnd;
+          });
+
+          if (!isDuringAbsence) {
+            for (let h = rule.startHour; h < rule.endHour; h++) {
+              for (let m = 0; m < 60; m += rule.slotDurationMins) {
+                const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+
+                // Vérifier les heures exclues
+                const isExcluded = (rule.excludedTimes || []).some((range) => {
+                  const [start, end] = range.split('-');
+                  return timeStr >= start && timeStr < end;
+                });
+
+                if (isExcluded) continue;
+
+                const slotStart = new Date(currentDate);
+                slotStart.setHours(h, m, 0, 0);
+
+                // Ignorer les créneaux dans le passé
+                if (slotStart <= now) continue;
+
+                const slotEnd = new Date(slotStart.getTime() + rule.slotDurationMins * 60000);
+
+                // Vérifier si ce créneau est déjà réservé
+                if (bookedTimes.has(slotStart.toISOString())) continue;
+
+                slots.push({
+                  id: `rule-${rule.id}-${slotStart.toISOString()}`,
+                  start: slotStart.toISOString(),
+                  end: slotEnd.toISOString(),
+                  capacity: rule.capacity,
+                  status: 'ACTIVE',
+                  ownerId: doctorId,
+                  ruleId: rule.id,
+                });
+              }
+            }
+          }
+        }
+
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    }
+
+    // Trier par date
+    slots.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+
+    return slots;
+  }
+
+  /**
    * 🔒 Pour le doctor connecté (vue interne)
    * Renvoie UNIQUEMENT ses créneaux avec rendez-vous (slots réservés)
    */

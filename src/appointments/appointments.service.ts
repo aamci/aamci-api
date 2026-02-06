@@ -171,14 +171,25 @@ export class AppointmentsService {
       },
     });
 
-    // Quand le médecin crée le RDV, il est directement CONFIRMED
+    // Vérifier le paramètre autoConfirmPatientBookings du médecin
+    const isPatientBooking = data.patientId !== ownerId;
+    let initialStatus: 'CONFIRMED' | 'PENDING' = 'CONFIRMED';
+
+    if (isPatientBooking) {
+      const doctorProfile = await this.prisma.doctorProfile.findUnique({
+        where: { userId: ownerId },
+      });
+      const autoConfirm = doctorProfile?.autoConfirmPatientBookings ?? true;
+      initialStatus = autoConfirm ? 'CONFIRMED' : 'PENDING';
+    }
+
     const appointment = await this.prisma.appointment.create({
       data: {
         slotId: slot.id,
         patientId: data.patientId,
         kindId: data.kindId,
         notes: data.notes,
-        status: 'CONFIRMED', // RDV créé par médecin = directement confirmé
+        status: initialStatus,
         type: 'CONSULTATION',
       },
       include: {
@@ -192,24 +203,28 @@ export class AppointmentsService {
     await this.logHistory(
       appointment.id,
       'CREATED',
-      data.doctorId || null,
+      data.patientId,
       null,
       {
         slotStart: data.slotStart,
         slotEnd: data.slotEnd,
         patientId: data.patientId,
-        status: 'CONFIRMED',
+        status: initialStatus,
       },
-      `Rendez-vous créé par le médecin pour ${appointment.patient.fullName || 'le patient'}`
+      isPatientBooking
+        ? `Rendez-vous réservé par le patient${initialStatus === 'CONFIRMED' ? ' (auto-confirmé)' : ''}`
+        : `Rendez-vous créé par le médecin pour ${appointment.patient.fullName || 'le patient'}`
     );
 
     // Envoyer une notification au patient
     try {
-      await this.notificationsService.createAppointmentConfirmed(
-        data.patientId,
-        appointment.id,
-        requestedStart,
-      );
+      if (initialStatus === 'CONFIRMED') {
+        await this.notificationsService.createAppointmentConfirmed(
+          data.patientId,
+          appointment.id,
+          requestedStart,
+        );
+      }
     } catch (error) {
       console.error('Failed to send appointment notification:', error);
     }

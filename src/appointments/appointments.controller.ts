@@ -87,32 +87,31 @@ export class AppointmentsController {
       slotStart?: string;
       slotEnd?: string;
       patientId?: string;
+      doctorId?: string;
       kindId?: string;
       notes?: string
     },
     @Req() req: any
   ) {
-    const userId = req.user.userId || req.user.sub;
+    const userId = req.user.userId || req.user.sub || req.user.id;
     const role = req.user.role;
 
-    // Si slotStart et slotEnd sont fournis, créer d'abord le slot
+    // Si slotStart et slotEnd sont fournis, créer le slot à la volée
     if (dto.slotStart && dto.slotEnd) {
+      // Le doctorId vient du body (patient qui réserve) ou du JWT (médecin qui crée)
+      const doctorId = role === 'DOCTOR' ? userId : dto.doctorId;
       return this.svc.createWithNewSlot({
         patientId: dto.patientId || userId,
         slotStart: dto.slotStart,
         slotEnd: dto.slotEnd,
         kindId: dto.kindId,
         notes: dto.notes,
-        doctorId: role === 'DOCTOR' ? userId : undefined,
+        doctorId,
       });
     }
 
     // Sinon, utiliser le slotId existant
-    return this.svc.create({
-      slotId: dto.slotId!,
-      patientId: dto.patientId || userId,
-      notes: dto.notes
-    });
+    return this.svc.createForPatient(userId, dto.slotId!, dto.notes);
   }
 
 }

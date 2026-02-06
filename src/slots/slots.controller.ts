@@ -27,10 +27,24 @@ export class SlotsController {
     @Get()
   async list(@Query('ownerId') ownerId?: string) {
     if (!ownerId) {
-      // Si pas d’ownerId -> retourne rien, pas une erreur
       return [];
     }
     return this.slots.findAllPublic(ownerId);
+  }
+
+  /**
+   * 🌍 Public: génère les créneaux disponibles à partir des AvailabilityRules du médecin
+   * C'est cet endpoint que le patient utilise pour voir le calendrier
+   */
+  @Get('available/:doctorId')
+  async getAvailableSlots(
+    @Param('doctorId') doctorId: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+    return this.slots.generateAvailableSlots(doctorId, fromDate, toDate);
   }
 
   // 👉 version sécurisée (doctor connecté)
