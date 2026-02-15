@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class MessagesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   /**
    * Récupérer toutes les conversations d'un utilisateur
@@ -216,6 +220,28 @@ export class MessagesService {
       where: { id: conversationId },
       data: { updatedAt: new Date() },
     });
+
+    // Créer une notification pour le destinataire
+    const recipientUserId =
+      conversation.participant1Id === userId
+        ? conversation.participant2Id
+        : conversation.participant1Id;
+
+    const sender = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { fullName: true },
+    });
+
+    try {
+      await this.notificationsService.create({
+        userId: recipientUserId,
+        type: 'NEW_MESSAGE',
+        title: 'Nouveau message',
+        message: `${sender?.fullName || 'Un utilisateur'} vous a envoyé un message`,
+      });
+    } catch (error) {
+      console.error('Failed to create message notification:', error);
+    }
 
     return message;
   }
