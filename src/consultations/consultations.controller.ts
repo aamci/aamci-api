@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -81,5 +82,11 @@ export class ConsultationsController {
   ) {
     const doctorId = req.user.id || req.user.userId;
     return this.svc.end(id, doctorId, dto);
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string, @Req() req) {
+    const doctorId = req.user.id || req.user.userId;
+    return this.svc.remove(id, doctorId);
   }
 }

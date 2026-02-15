@@ -177,10 +177,6 @@ export class ConsultationsService {
       throw new ForbiddenException('Accès non autorisé');
     }
 
-    if (consultation.status !== 'ACTIVE') {
-      throw new BadRequestException('Cette consultation est déjà terminée');
-    }
-
     return this.prisma.consultation.update({
       where: { id: consultationId },
       data: {
@@ -275,5 +271,28 @@ export class ConsultationsService {
         },
       },
     });
+  }
+
+  /**
+   * Supprimer une consultation
+   */
+  async remove(consultationId: string, doctorId: string) {
+    const consultation = await this.prisma.consultation.findUnique({
+      where: { id: consultationId },
+    });
+
+    if (!consultation) {
+      throw new NotFoundException('Consultation non trouvée');
+    }
+
+    if (consultation.doctorId !== doctorId) {
+      throw new ForbiddenException('Accès non autorisé');
+    }
+
+    await this.prisma.consultation.delete({
+      where: { id: consultationId },
+    });
+
+    return { deleted: true };
   }
 }
