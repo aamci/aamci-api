@@ -26,32 +26,32 @@ export class PrescriptionTemplatesController {
 
   @Get()
   getTemplates(@Request() req, @Query('category') category?: string) {
-    return this.prescriptionTemplatesService.getTemplates(req.user.sub, category);
+    return this.prescriptionTemplatesService.getTemplates(req.user.userId, category);
   }
 
   @Get('favorites')
   getFavoriteTemplates(@Request() req) {
-    return this.prescriptionTemplatesService.getFavoriteTemplates(req.user.sub);
+    return this.prescriptionTemplatesService.getFavoriteTemplates(req.user.userId);
   }
 
   @Get('categories')
   getCategories(@Request() req) {
-    return this.prescriptionTemplatesService.getCategories(req.user.sub);
+    return this.prescriptionTemplatesService.getCategories(req.user.userId);
   }
 
   @Get('stats')
   getStats(@Request() req) {
-    return this.prescriptionTemplatesService.getStats(req.user.sub);
+    return this.prescriptionTemplatesService.getStats(req.user.userId);
   }
 
   @Get(':id')
   getTemplate(@Request() req, @Param('id') id: string) {
-    return this.prescriptionTemplatesService.getTemplate(req.user.sub, id);
+    return this.prescriptionTemplatesService.getTemplate(req.user.userId, id);
   }
 
   @Post()
   createTemplate(@Request() req, @Body() createDto: CreatePrescriptionTemplateDto) {
-    return this.prescriptionTemplatesService.createTemplate(req.user.sub, createDto);
+    return this.prescriptionTemplatesService.createTemplate(req.user.userId, createDto);
   }
 
   @Put(':id')
@@ -61,7 +61,7 @@ export class PrescriptionTemplatesController {
     @Body() updateDto: UpdatePrescriptionTemplateDto,
   ) {
     return this.prescriptionTemplatesService.updateTemplate(
-      req.user.sub,
+      req.user.userId,
       id,
       updateDto,
     );
@@ -69,21 +69,21 @@ export class PrescriptionTemplatesController {
 
   @Delete(':id')
   deleteTemplate(@Request() req, @Param('id') id: string) {
-    return this.prescriptionTemplatesService.deleteTemplate(req.user.sub, id);
+    return this.prescriptionTemplatesService.deleteTemplate(req.user.userId, id);
   }
 
   @Post(':id/toggle-favorite')
   toggleFavorite(@Request() req, @Param('id') id: string) {
-    return this.prescriptionTemplatesService.toggleFavorite(req.user.sub, id);
+    return this.prescriptionTemplatesService.toggleFavorite(req.user.userId, id);
   }
 
   @Post(':id/duplicate')
   duplicateTemplate(@Request() req, @Param('id') id: string) {
-    return this.prescriptionTemplatesService.duplicateTemplate(req.user.sub, id);
+    return this.prescriptionTemplatesService.duplicateTemplate(req.user.userId, id);
   }
 
   @Post(':id/use')
   useTemplate(@Request() req, @Param('id') id: string) {
-    return this.prescriptionTemplatesService.useTemplate(req.user.sub, id);
+    return this.prescriptionTemplatesService.useTemplate(req.user.userId, id);
   }
 }

@@ -208,18 +208,65 @@ export class CalendarSyncService {
 
   // Get iCal feed content
   async getICalFeed(token: string) {
-    // TODO: Generate iCal format from user's appointments
-    // This would create a standard iCal format that can be imported into any calendar app
+    // Find the user by checking all users' token hashes
+    const users = await this.prisma.user.findMany({ select: { id: true } });
+    let matchedUserId: string | null = null;
+    for (const user of users) {
+      const hash = crypto.createHash('sha256').update(`${user.id}-ical-feed`).digest('hex').slice(0, 32);
+      if (hash === token) {
+        matchedUserId = user.id;
+        break;
+      }
+    }
 
-    const icalContent = `BEGIN:VCALENDAR
+    if (!matchedUserId) {
+      throw new NotFoundException('Invalid iCal token');
+    }
+
+    // Fetch upcoming appointments for this user
+    const appointments = await this.prisma.appointment.findMany({
+      where: {
+        OR: [
+          { patientId: matchedUserId },
+          { slot: { ownerId: matchedUserId } },
+        ],
+        status: { in: ['CONFIRMED', 'PENDING'] },
+      },
+      include: {
+        slot: true,
+        patient: { select: { fullName: true } },
+        kind: { select: { name: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    const events = appointments.map((apt) => {
+      const start = apt.slot?.start ? new Date(apt.slot.start) : new Date(apt.createdAt);
+      const end = apt.slot?.end ? new Date(apt.slot.end) : new Date(start.getTime() + 30 * 60000);
+      const summary = apt.kind?.name || apt.notes || 'Rendez-vous';
+      const description = `Patient: ${apt.patient?.fullName || 'N/A'}`;
+
+      const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
+      return `BEGIN:VEVENT
+DTSTART:${fmt(start)}
+DTEND:${fmt(end)}
+SUMMARY:${summary}
+DESCRIPTION:${description}
+UID:${apt.id}@healthplatform
+STATUS:${apt.status === 'CONFIRMED' ? 'CONFIRMED' : 'TENTATIVE'}
+END:VEVENT`;
+    }).join('\n');
+
+    return `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//HealthPlatform//Calendar//EN
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
 X-WR-CALNAME:Mes Rendez-vous
+${events}
 END:VCALENDAR`;
-
-    return icalContent;
   }
 
   // Get sync settings

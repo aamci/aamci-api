@@ -18,7 +18,7 @@ export class UsersController {
     birthPlace?: string;
     birthName?: string;
   }) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
 
     if (!dto.fullName || !dto.email) {
       throw new BadRequestException('Le nom complet et l\'email sont requis');
@@ -46,13 +46,13 @@ export class UsersController {
 
   @Get('me')
   async me(@Req() req) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.users.findById(userId);
   }
 
   @Put('me')
   async updateMe(@Req() req, @Body() dto: any) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.users.update(userId, {
       email: dto.email,
       fullName: dto.fullName,
@@ -66,7 +66,7 @@ export class UsersController {
 
   @Put('me/password')
   async changePassword(@Req() req, @Body() dto: any) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     if (!dto.currentPassword || !dto.newPassword) {
       throw new BadRequestException('Mot de passe actuel et nouveau mot de passe requis');
     }
@@ -75,13 +75,13 @@ export class UsersController {
 
   @Get('patients')
   async getMyPatients(@Req() req) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.users.getDoctorPatients(doctorId);
   }
 
   @Get('patients/search')
   async searchPatients(@Req() req, @Query('q') query: string) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     if (!query) {
       throw new BadRequestException('Query parameter "q" is required');
     }
@@ -90,7 +90,7 @@ export class UsersController {
 
   @Get('patients/:id')
   async getPatientDetails(@Req() req, @Param('id') patientId: string) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     if (!patientId) {
       throw new BadRequestException('Patient ID is required');
     }

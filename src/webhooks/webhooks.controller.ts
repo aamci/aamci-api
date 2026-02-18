@@ -21,17 +21,17 @@ export class WebhooksController {
 
   @Post()
   create(@Request() req, @Body() createDto: CreateWebhookDto) {
-    return this.webhooksService.createSubscription(req.user.sub, createDto);
+    return this.webhooksService.createSubscription(req.user.userId, createDto);
   }
 
   @Get()
   findAll(@Request() req) {
-    return this.webhooksService.getSubscriptions(req.user.sub);
+    return this.webhooksService.getSubscriptions(req.user.userId);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req) {
-    return this.webhooksService.getSubscription(id, req.user.sub);
+    return this.webhooksService.getSubscription(id, req.user.userId);
   }
 
   @Put(':id')
@@ -40,27 +40,27 @@ export class WebhooksController {
     @Request() req,
     @Body() updateDto: Partial<CreateWebhookDto>,
   ) {
-    return this.webhooksService.updateSubscription(id, req.user.sub, updateDto);
+    return this.webhooksService.updateSubscription(id, req.user.userId, updateDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string, @Request() req) {
-    return this.webhooksService.deleteSubscription(id, req.user.sub);
+    return this.webhooksService.deleteSubscription(id, req.user.userId);
   }
 
   @Post(':id/regenerate-secret')
   regenerateSecret(@Param('id') id: string, @Request() req) {
-    return this.webhooksService.regenerateSecret(id, req.user.sub);
+    return this.webhooksService.regenerateSecret(id, req.user.userId);
   }
 
   @Post(':id/toggle')
   toggle(@Param('id') id: string, @Request() req) {
-    return this.webhooksService.toggleActive(id, req.user.sub);
+    return this.webhooksService.toggleActive(id, req.user.userId);
   }
 
   @Post(':id/test')
   test(@Param('id') id: string, @Request() req) {
-    return this.webhooksService.testWebhook(id, req.user.sub);
+    return this.webhooksService.testWebhook(id, req.user.userId);
   }
 
   @Get(':id/deliveries')
@@ -72,7 +72,7 @@ export class WebhooksController {
   ) {
     return this.webhooksService.getDeliveryHistory(
       id,
-      req.user.sub,
+      req.user.userId,
       page ? parseInt(page) : 1,
       limit ? parseInt(limit) : 20,
     );

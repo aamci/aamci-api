@@ -5,12 +5,16 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { EmailService } from '../common/email.service';
 import { CreateTeamMemberDto } from './dto/create-team-member.dto';
 import { UpdateTeamMemberDto, TeamMemberStatus } from './dto/update-team-member.dto';
 
 @Injectable()
 export class TeamService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private emailService: EmailService,
+  ) {}
 
   async getTeamMembers(ownerId: string) {
     return this.prisma.teamMember.findMany({
@@ -63,8 +67,21 @@ export class TeamService {
       },
     });
 
-    // TODO: Send invitation email
-    // await this.emailService.sendTeamInvitation(member);
+    // Send invitation email
+    const inviter = await this.prisma.user.findUnique({
+      where: { id: ownerId },
+      select: { fullName: true },
+    });
+    try {
+      await this.emailService.sendTeamInvitation(
+        createDto.email,
+        inviter?.fullName || 'Un médecin',
+        createDto.fullName,
+        createDto.role,
+      );
+    } catch (error) {
+      console.error('Failed to send team invitation email:', error);
+    }
 
     return member;
   }
@@ -116,8 +133,21 @@ export class TeamService {
       },
     });
 
-    // TODO: Send invitation email
-    // await this.emailService.sendTeamInvitation(member);
+    // Resend invitation email
+    const inviter = await this.prisma.user.findUnique({
+      where: { id: ownerId },
+      select: { fullName: true },
+    });
+    try {
+      await this.emailService.sendTeamInvitation(
+        member.email,
+        inviter?.fullName || 'Un médecin',
+        member.fullName,
+        member.role,
+      );
+    } catch (error) {
+      console.error('Failed to resend team invitation email:', error);
+    }
 
     return { message: 'Invitation resent successfully' };
   }

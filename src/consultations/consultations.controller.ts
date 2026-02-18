@@ -23,7 +23,7 @@ export class ConsultationsController {
     @Req() req,
     @Body() dto: { patientId: string; appointmentId?: string; motif?: string },
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.create(doctorId, dto);
   }
 
@@ -33,7 +33,7 @@ export class ConsultationsController {
     @Req() req,
     @Query('status') status?: string,
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.listForPatient(patientId, doctorId, status);
   }
 
@@ -42,13 +42,13 @@ export class ConsultationsController {
     @Param('patientId') patientId: string,
     @Req() req,
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.getActive(patientId, doctorId);
   }
 
   @Get(':id')
   async findById(@Param('id') id: string, @Req() req) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.findById(id, userId);
   }
 
@@ -64,7 +64,7 @@ export class ConsultationsController {
       notes?: string;
     },
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.update(id, doctorId, dto);
   }
 
@@ -80,13 +80,13 @@ export class ConsultationsController {
       notes?: string;
     },
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.end(id, doctorId, dto);
   }
 
   @Delete(':id')
   async remove(@Param('id') id: string, @Req() req) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.remove(id, doctorId);
   }
 }

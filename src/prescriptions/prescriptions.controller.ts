@@ -26,7 +26,7 @@ export class PrescriptionsController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.listForDoctor(doctorId, {
       status,
       patientId,
@@ -41,13 +41,13 @@ export class PrescriptionsController {
     @Req() req,
     @Query('status') status?: string,
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.listForPatient(patientId, doctorId, status);
   }
 
   @Get(':id')
   async findById(@Param('id') id: string, @Req() req) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.findById(id, userId);
   }
 
@@ -71,7 +71,7 @@ export class PrescriptionsController {
       }>;
     },
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.create(doctorId, dto);
   }
 
@@ -94,19 +94,19 @@ export class PrescriptionsController {
       }>;
     },
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.update(id, doctorId, dto);
   }
 
   @Post(':id/activate')
   async activate(@Param('id') id: string, @Req() req) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.activate(id, doctorId);
   }
 
   @Post(':id/cancel')
   async cancel(@Param('id') id: string, @Req() req) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.cancel(id, doctorId);
   }
 
@@ -116,13 +116,13 @@ export class PrescriptionsController {
     @Req() req,
     @Body() dto: { validUntil?: string },
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.renew(id, doctorId, dto.validUntil);
   }
 
   @Delete(':id')
   async delete(@Param('id') id: string, @Req() req) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.delete(id, doctorId);
   }
 }

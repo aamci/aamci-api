@@ -28,7 +28,7 @@ export class TasksController {
     @Query('dueBefore') dueBefore?: string,
     @Query('dueAfter') dueAfter?: string,
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.listForDoctor(doctorId, {
       status,
       priority,
@@ -41,19 +41,19 @@ export class TasksController {
 
   @Get('stats')
   async getStats(@Req() req) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.getStats(doctorId);
   }
 
   @Get('reminders')
   async getReminders(@Req() req) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.getReminders(doctorId);
   }
 
   @Get(':id')
   async findById(@Param('id') id: string, @Req() req) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.findById(id, doctorId);
   }
 
@@ -72,7 +72,7 @@ export class TasksController {
       tags?: string[];
     },
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.create(doctorId, dto);
   }
 
@@ -93,19 +93,19 @@ export class TasksController {
       tags?: string[];
     },
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.update(id, doctorId, dto);
   }
 
   @Post(':id/done')
   async markAsDone(@Param('id') id: string, @Req() req) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.markAsDone(id, doctorId);
   }
 
   @Delete(':id')
   async delete(@Param('id') id: string, @Req() req) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.delete(id, doctorId);
   }
 }

@@ -22,22 +22,22 @@ export class TeamController {
 
   @Get()
   getTeamMembers(@Request() req) {
-    return this.teamService.getTeamMembers(req.user.sub);
+    return this.teamService.getTeamMembers(req.user.userId);
   }
 
   @Get('stats')
   getTeamStats(@Request() req) {
-    return this.teamService.getTeamStats(req.user.sub);
+    return this.teamService.getTeamStats(req.user.userId);
   }
 
   @Get(':id')
   getTeamMember(@Request() req, @Param('id') id: string) {
-    return this.teamService.getTeamMember(req.user.sub, id);
+    return this.teamService.getTeamMember(req.user.userId, id);
   }
 
   @Post('invite')
   inviteTeamMember(@Request() req, @Body() createDto: CreateTeamMemberDto) {
-    return this.teamService.inviteTeamMember(req.user.sub, createDto);
+    return this.teamService.inviteTeamMember(req.user.userId, createDto);
   }
 
   @Put(':id')
@@ -46,7 +46,7 @@ export class TeamController {
     @Param('id') id: string,
     @Body() updateDto: UpdateTeamMemberDto,
   ) {
-    return this.teamService.updateTeamMember(req.user.sub, id, updateDto);
+    return this.teamService.updateTeamMember(req.user.userId, id, updateDto);
   }
 
   @Patch(':id/permissions')
@@ -55,26 +55,26 @@ export class TeamController {
     @Param('id') id: string,
     @Body('permissions') permissions: string[],
   ) {
-    return this.teamService.updatePermissions(req.user.sub, id, permissions);
+    return this.teamService.updatePermissions(req.user.userId, id, permissions);
   }
 
   @Post(':id/resend-invitation')
   resendInvitation(@Request() req, @Param('id') id: string) {
-    return this.teamService.resendInvitation(req.user.sub, id);
+    return this.teamService.resendInvitation(req.user.userId, id);
   }
 
   @Post(':id/deactivate')
   deactivateMember(@Request() req, @Param('id') id: string) {
-    return this.teamService.deactivateMember(req.user.sub, id);
+    return this.teamService.deactivateMember(req.user.userId, id);
   }
 
   @Post(':id/reactivate')
   reactivateMember(@Request() req, @Param('id') id: string) {
-    return this.teamService.reactivateMember(req.user.sub, id);
+    return this.teamService.reactivateMember(req.user.userId, id);
   }
 
   @Delete(':id')
   removeTeamMember(@Request() req, @Param('id') id: string) {
-    return this.teamService.removeTeamMember(req.user.sub, id);
+    return this.teamService.removeTeamMember(req.user.userId, id);
   }
 }

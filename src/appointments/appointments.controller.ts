@@ -10,7 +10,7 @@ export class AppointmentsController {
  
   @Get()
   async list(@Req() req) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     const role = req.user.role;
     return this.svc.findForUser(userId, role);
   }
@@ -21,13 +21,13 @@ export class AppointmentsController {
     @Param('id') id: string,
     @Body() dto: { status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'NO_SHOW' },
   ) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.updateStatusAsOwner(id, userId, dto.status);
   }
 
   @Patch(':id/reschedule')
   async reschedule(@Req() req, @Param('id') id: string, @Body() dto: { newStart: string }) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.rescheduleAsOwner(id, userId, dto.newStart);
   }
 
@@ -43,7 +43,7 @@ export class AppointmentsController {
       notes?: string;
     }
   ) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     console.log(`[APPT CONTROLLER] PATCH /appointments/${id} appelé par userId: ${userId}`);
     console.log(`[APPT CONTROLLER] DTO reçu:`, JSON.stringify(dto, null, 2));
 
@@ -60,13 +60,13 @@ export class AppointmentsController {
 
   @Get(':id')
   async getById(@Param('id') id: string, @Req() req) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.findByIdForUser(id, userId);
   }
 
   @Post(':id/start-video')
   async startVideoSession(@Param('id') id: string, @Req() req) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.startVideoSession(id, userId);
   }
 
@@ -76,7 +76,7 @@ export class AppointmentsController {
     @Body() dto: { notes?: string },
     @Req() req
   ) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.endVideoSession(id, userId, dto.notes);
   }
 
@@ -93,7 +93,7 @@ export class AppointmentsController {
     },
     @Req() req: any
   ) {
-    const userId = req.user.userId || req.user.sub || req.user.id;
+    const userId = req.user.userId;
     const role = req.user.role;
 
     // Si slotStart et slotEnd sont fournis, créer le slot à la volée

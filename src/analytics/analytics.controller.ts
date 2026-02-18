@@ -21,17 +21,17 @@ export class AnalyticsController {
     @Request() req,
     @Query('period') period: '7d' | '30d' | '90d' | '12m' = '30d',
   ) {
-    return this.analyticsService.getDashboardMetrics(req.user.sub, period);
+    return this.analyticsService.getDashboardMetrics(req.user.userId, period);
   }
 
   @Get('advanced')
   getAdvancedMetrics(@Request() req) {
-    return this.analyticsService.getAdvancedMetrics(req.user.sub);
+    return this.analyticsService.getAdvancedMetrics(req.user.userId);
   }
 
   @Get('retention')
   getRetentionMetrics(@Request() req) {
-    return this.analyticsService.getRetentionMetrics(req.user.sub);
+    return this.analyticsService.getRetentionMetrics(req.user.userId);
   }
 
   @Get('goals')
@@ -39,7 +39,7 @@ export class AnalyticsController {
     const now = new Date();
     const year = query.year || now.getFullYear();
     const month = query.month || now.getMonth() + 1;
-    return this.analyticsService.getGoals(req.user.sub, year, month);
+    return this.analyticsService.getGoals(req.user.userId, year, month);
   }
 
   @Post('goals')
@@ -51,27 +51,27 @@ export class AnalyticsController {
     const now = new Date();
     const year = query.year || now.getFullYear();
     const month = query.month || now.getMonth() + 1;
-    return this.analyticsService.setGoals(req.user.sub, year, month, goals);
+    return this.analyticsService.setGoals(req.user.userId, year, month, goals);
   }
 
   @Get('trends')
   getMonthlyTrends(@Request() req) {
     const now = new Date();
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
-    return this.analyticsService.getMonthlyTrends(req.user.sub, sixMonthsAgo, now);
+    return this.analyticsService.getMonthlyTrends(req.user.userId, sixMonthsAgo, now);
   }
 
   @Get('top-services')
   getTopServices(@Request() req) {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    return this.analyticsService.getTopServices(req.user.sub, monthStart, now);
+    return this.analyticsService.getTopServices(req.user.userId, monthStart, now);
   }
 
   @Get('performance-by-day')
   getPerformanceByDay(@Request() req) {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    return this.analyticsService.getPerformanceByDay(req.user.sub, monthStart, now);
+    return this.analyticsService.getPerformanceByDay(req.user.userId, monthStart, now);
   }
 }

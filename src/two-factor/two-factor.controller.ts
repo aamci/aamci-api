@@ -16,31 +16,31 @@ export class TwoFactorController {
 
   @Get('status')
   getStatus(@Request() req) {
-    return this.twoFactorService.getStatus(req.user.sub);
+    return this.twoFactorService.getStatus(req.user.userId);
   }
 
   @Post('generate')
   generateSecret(@Request() req) {
-    return this.twoFactorService.generateSecret(req.user.sub);
+    return this.twoFactorService.generateSecret(req.user.userId);
   }
 
   @Post('enable')
   enable(@Request() req, @Body('code') code: string) {
-    return this.twoFactorService.enable(req.user.sub, code);
+    return this.twoFactorService.enable(req.user.userId, code);
   }
 
   @Post('disable')
   disable(@Request() req, @Body('code') code: string) {
-    return this.twoFactorService.disable(req.user.sub, code);
+    return this.twoFactorService.disable(req.user.userId, code);
   }
 
   @Post('verify')
   verify(@Request() req, @Body('code') code: string) {
-    return this.twoFactorService.verify(req.user.sub, code);
+    return this.twoFactorService.verify(req.user.userId, code);
   }
 
   @Post('backup-codes/regenerate')
   regenerateBackupCodes(@Request() req, @Body('code') code: string) {
-    return this.twoFactorService.regenerateBackupCodes(req.user.sub, code);
+    return this.twoFactorService.regenerateBackupCodes(req.user.userId, code);
   }
 }

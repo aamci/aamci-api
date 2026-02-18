@@ -20,7 +20,7 @@ export class FavoritesController {
    */
   @Get()
   async getMyFavorites(@Req() req) {
-    const patientId = req.user.id || req.user.userId;
+    const patientId = req.user.userId;
     return this.favoritesService.getFavorites(patientId);
   }
 
@@ -29,7 +29,7 @@ export class FavoritesController {
    */
   @Get('check/:doctorId')
   async checkFavorite(@Req() req, @Param('doctorId') doctorId: string) {
-    const patientId = req.user.id || req.user.userId;
+    const patientId = req.user.userId;
     return this.favoritesService.isFavorite(patientId, doctorId);
   }
 
@@ -38,7 +38,7 @@ export class FavoritesController {
    */
   @Post(':doctorId')
   async addFavorite(@Req() req, @Param('doctorId') doctorId: string) {
-    const patientId = req.user.id || req.user.userId;
+    const patientId = req.user.userId;
     return this.favoritesService.addFavorite(patientId, doctorId);
   }
 
@@ -47,7 +47,7 @@ export class FavoritesController {
    */
   @Delete(':doctorId')
   async removeFavorite(@Req() req, @Param('doctorId') doctorId: string) {
-    const patientId = req.user.id || req.user.userId;
+    const patientId = req.user.userId;
     return this.favoritesService.removeFavorite(patientId, doctorId);
   }
 
@@ -56,7 +56,7 @@ export class FavoritesController {
    */
   @Post(':doctorId/toggle')
   async toggleFavorite(@Req() req, @Param('doctorId') doctorId: string) {
-    const patientId = req.user.id || req.user.userId;
+    const patientId = req.user.userId;
     return this.favoritesService.toggleFavorite(patientId, doctorId);
   }
 

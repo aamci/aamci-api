@@ -26,19 +26,19 @@ export class CalendarSyncController {
   @Get()
   @UseGuards(JwtAuthGuard)
   getConnections(@Request() req) {
-    return this.calendarSyncService.getConnections(req.user.sub);
+    return this.calendarSyncService.getConnections(req.user.userId);
   }
 
   @Get('settings')
   @UseGuards(JwtAuthGuard)
   getSyncSettings(@Request() req) {
-    return this.calendarSyncService.getSyncSettings(req.user.sub);
+    return this.calendarSyncService.getSyncSettings(req.user.userId);
   }
 
   @Get('ical-url')
   @UseGuards(JwtAuthGuard)
   getICalUrl(@Request() req) {
-    return this.calendarSyncService.getICalUrl(req.user.sub);
+    return this.calendarSyncService.getICalUrl(req.user.userId);
   }
 
   @Get('ical/:token')
@@ -52,13 +52,13 @@ export class CalendarSyncController {
   @Get(':provider')
   @UseGuards(JwtAuthGuard)
   getConnection(@Request() req, @Param('provider') provider: CalendarProvider) {
-    return this.calendarSyncService.getConnection(req.user.sub, provider);
+    return this.calendarSyncService.getConnection(req.user.userId, provider);
   }
 
   @Post('connect')
   @UseGuards(JwtAuthGuard)
   createConnection(@Request() req, @Body() createDto: CreateCalendarConnectionDto) {
-    return this.calendarSyncService.createConnection(req.user.sub, createDto);
+    return this.calendarSyncService.createConnection(req.user.userId, createDto);
   }
 
   @Put(':provider')
@@ -68,7 +68,7 @@ export class CalendarSyncController {
     @Param('provider') provider: CalendarProvider,
     @Body() updateDto: UpdateCalendarConnectionDto,
   ) {
-    return this.calendarSyncService.updateConnection(req.user.sub, provider, updateDto);
+    return this.calendarSyncService.updateConnection(req.user.userId, provider, updateDto);
   }
 
   @Put(':provider/settings')
@@ -78,24 +78,24 @@ export class CalendarSyncController {
     @Param('provider') provider: CalendarProvider,
     @Body() settings: Partial<UpdateCalendarConnectionDto>,
   ) {
-    return this.calendarSyncService.updateSyncSettings(req.user.sub, provider, settings);
+    return this.calendarSyncService.updateSyncSettings(req.user.userId, provider, settings);
   }
 
   @Post(':provider/sync')
   @UseGuards(JwtAuthGuard)
   syncCalendar(@Request() req, @Param('provider') provider: CalendarProvider) {
-    return this.calendarSyncService.syncCalendar(req.user.sub, provider);
+    return this.calendarSyncService.syncCalendar(req.user.userId, provider);
   }
 
   @Post('sync-all')
   @UseGuards(JwtAuthGuard)
   syncAllCalendars(@Request() req) {
-    return this.calendarSyncService.syncAllCalendars(req.user.sub);
+    return this.calendarSyncService.syncAllCalendars(req.user.userId);
   }
 
   @Delete(':provider')
   @UseGuards(JwtAuthGuard)
   disconnect(@Request() req, @Param('provider') provider: CalendarProvider) {
-    return this.calendarSyncService.disconnect(req.user.sub, provider);
+    return this.calendarSyncService.disconnect(req.user.userId, provider);
   }
 }

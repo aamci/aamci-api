@@ -9,7 +9,7 @@ export class AppointmentKindsController {
   @Get()
   @UseGuards(JwtAuthGuard)
   async list(@Req() req) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     const role = req.user.role;
     return this.svc.listForUser(userId, role);
   }
@@ -32,7 +32,7 @@ export class AppointmentKindsController {
       color?: string;
     }
   ) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.createForDoctor(userId, dto);
   }
 
@@ -49,14 +49,14 @@ export class AppointmentKindsController {
       color?: string;
     }
   ) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.updateForDoctor(userId, id, dto);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   async delete(@Req() req, @Param('id') id: string) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.deleteForDoctor(userId, id);
   }
 }

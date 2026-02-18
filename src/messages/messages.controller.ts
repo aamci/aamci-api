@@ -18,7 +18,7 @@ export class MessagesController {
 
   @Get('conversations')
   async getConversations(@Req() req) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.getConversations(userId);
   }
 
@@ -29,7 +29,7 @@ export class MessagesController {
     @Query('take') take?: string,
     @Query('cursor') cursor?: string,
   ) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.getMessages(
       conversationId,
       userId,
@@ -49,19 +49,19 @@ export class MessagesController {
       type?: string;
     },
   ) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.sendMessage(userId, dto);
   }
 
   @Post('conversations/:id/read')
   async markAsRead(@Param('id') conversationId: string, @Req() req) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.markAsRead(conversationId, userId);
   }
 
   @Get('unread-count')
   async getUnreadCount(@Req() req) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.getUnreadCount(userId);
   }
 }

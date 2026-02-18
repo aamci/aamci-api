@@ -22,7 +22,7 @@ export class ReviewsController {
   @UseGuards(JwtAuthGuard)
   @Post()
   create(@Request() req, @Body() createReviewDto: CreateReviewDto) {
-    return this.reviewsService.create(req.user.sub, createReviewDto);
+    return this.reviewsService.create(req.user.userId, createReviewDto);
   }
 
   @Get('doctor/:doctorId')
@@ -41,13 +41,13 @@ export class ReviewsController {
   @UseGuards(JwtAuthGuard)
   @Get('my-reviews')
   findMyReviews(@Request() req) {
-    return this.reviewsService.findByPatient(req.user.sub);
+    return this.reviewsService.findByPatient(req.user.userId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('pending')
   findPendingReviews(@Request() req) {
-    return this.reviewsService.findPendingReviews(req.user.sub);
+    return this.reviewsService.findPendingReviews(req.user.userId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -57,13 +57,13 @@ export class ReviewsController {
     @Request() req,
     @Body() updateReviewDto: UpdateReviewDto,
   ) {
-    return this.reviewsService.update(id, req.user.sub, updateReviewDto);
+    return this.reviewsService.update(id, req.user.userId, updateReviewDto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   remove(@Param('id') id: string, @Request() req) {
-    return this.reviewsService.remove(id, req.user.sub);
+    return this.reviewsService.remove(id, req.user.userId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -73,12 +73,12 @@ export class ReviewsController {
     @Request() req,
     @Body('response') response: string,
   ) {
-    return this.reviewsService.addDoctorResponse(id, req.user.sub, response);
+    return this.reviewsService.addDoctorResponse(id, req.user.userId, response);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post(':id/report')
   reportReview(@Param('id') id: string, @Request() req) {
-    return this.reviewsService.reportReview(id, req.user.sub);
+    return this.reviewsService.reportReview(id, req.user.userId);
   }
 }

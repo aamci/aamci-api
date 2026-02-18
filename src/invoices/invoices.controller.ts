@@ -26,7 +26,7 @@ export class InvoicesController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.listForDoctor(doctorId, {
       status,
       patientId,
@@ -42,13 +42,13 @@ export class InvoicesController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.getStats(doctorId, { startDate, endDate });
   }
 
   @Get(':id')
   async findById(@Param('id') id: string, @Req() req) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.findById(id, userId);
   }
 
@@ -69,7 +69,7 @@ export class InvoicesController {
       notes?: string;
     },
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.create(doctorId, dto);
   }
 
@@ -89,13 +89,13 @@ export class InvoicesController {
       notes?: string;
     },
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.update(id, doctorId, dto);
   }
 
   @Post(':id/send')
   async send(@Param('id') id: string, @Req() req) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.send(id, doctorId);
   }
 
@@ -105,13 +105,13 @@ export class InvoicesController {
     @Req() req,
     @Body() dto: { paymentMethod?: string },
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.markAsPaid(id, doctorId, dto.paymentMethod);
   }
 
   @Post(':id/cancel')
   async cancel(@Param('id') id: string, @Req() req) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.svc.cancel(id, doctorId);
   }
 }

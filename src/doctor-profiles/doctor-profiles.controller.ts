@@ -10,21 +10,21 @@ export class DoctorProfilesController {
   // GET /doctor-profiles/me
   @Get('me')
   async me(@Req() req) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.getMine(userId);
   }
 
   // POST /doctor-profiles  → crée si absent
   @Post()
   async createMine(@Req() req) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.createMine(userId);
   }
 
   // PUT /doctor-profiles/me  → met à jour
   @Put('me')
   async updateMine(@Req() req, @Body() body: any) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     return this.svc.updateMine(userId, body ?? {});
   }
 }

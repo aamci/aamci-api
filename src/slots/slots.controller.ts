@@ -21,7 +21,7 @@ export class SlotsController {
   constructor(private readonly slots: SlotsService) {}
 
   private getUserId(req: any): string {
-    return req.user?.id || req.user?.userId; // ✅ on tolère les deux
+    return req.user?.userId;
   }
 
     @Get()
@@ -51,7 +51,7 @@ export class SlotsController {
   @Get('mine')
   @UseGuards(JwtAuthGuard)
   async mySlots(@Req() req) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     console.log(`[SLOTS CONTROLLER] GET /slots/mine appelé pour userId: ${userId}`);
     const result = await this.slots.findAllByOwner(userId);
     console.log(`[SLOTS CONTROLLER] Retour de ${result.length} slots`);
@@ -83,7 +83,7 @@ export class SlotsController {
     @Post('bulk')
   @UseGuards(JwtAuthGuard)
   async bulkCreate(@Req() req, @Body() body: { slots: Array<{ start: string; end: string; capacity?: number; status?: string }> }) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     if (!userId) throw new UnauthorizedException('Utilisateur non authentifié');
 
     return this.slots.bulkCreate(userId, body.slots || []);
@@ -92,7 +92,7 @@ export class SlotsController {
   @Post('generate')
   @UseGuards(JwtAuthGuard)
   async generateSlots(@Req() req, @Body() body: any) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     if (!userId) throw new UnauthorizedException('Utilisateur non authentifié');
 
     const {

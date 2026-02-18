@@ -39,7 +39,7 @@ export class MedicalDocumentsController {
       isPrivate?: boolean;
     },
   ) {
-    const patientId = req.user.id || req.user.userId;
+    const patientId = req.user.userId;
     return this.medicalDocumentsService.createDocument(patientId, {
       ...body,
       documentDate: body.documentDate ? new Date(body.documentDate) : undefined,
@@ -51,7 +51,7 @@ export class MedicalDocumentsController {
    */
   @Get()
   async getMyDocuments(@Req() req) {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user.userId;
     const userRole = req.user.role;
     return this.medicalDocumentsService.getPatientDocuments(userId, userId, userRole);
   }
@@ -61,7 +61,7 @@ export class MedicalDocumentsController {
    */
   @Get('patient/:patientId')
   async getPatientDocuments(@Req() req, @Param('patientId') patientId: string) {
-    const requesterId = req.user.id || req.user.userId;
+    const requesterId = req.user.userId;
     const requesterRole = req.user.role;
     return this.medicalDocumentsService.getPatientDocuments(patientId, requesterId, requesterRole);
   }
@@ -71,7 +71,7 @@ export class MedicalDocumentsController {
    */
   @Get('stats')
   async getMyStats(@Req() req) {
-    const patientId = req.user.id || req.user.userId;
+    const patientId = req.user.userId;
     return this.medicalDocumentsService.getDocumentStats(patientId);
   }
 
@@ -80,7 +80,7 @@ export class MedicalDocumentsController {
    */
   @Get('category/:category')
   async getByCategory(@Req() req, @Param('category') category: DocumentCategory) {
-    const patientId = req.user.id || req.user.userId;
+    const patientId = req.user.userId;
     return this.medicalDocumentsService.getDocumentsByCategory(patientId, category);
   }
 
@@ -89,7 +89,7 @@ export class MedicalDocumentsController {
    */
   @Get(':id')
   async getDocument(@Req() req, @Param('id') documentId: string) {
-    const requesterId = req.user.id || req.user.userId;
+    const requesterId = req.user.userId;
     const requesterRole = req.user.role;
     return this.medicalDocumentsService.getDocument(documentId, requesterId, requesterRole);
   }
@@ -109,7 +109,7 @@ export class MedicalDocumentsController {
       isPrivate?: boolean;
     },
   ) {
-    const patientId = req.user.id || req.user.userId;
+    const patientId = req.user.userId;
     return this.medicalDocumentsService.updateDocument(documentId, patientId, {
       ...body,
       documentDate: body.documentDate ? new Date(body.documentDate) : undefined,
@@ -121,7 +121,7 @@ export class MedicalDocumentsController {
    */
   @Delete(':id')
   async deleteDocument(@Req() req, @Param('id') documentId: string) {
-    const patientId = req.user.id || req.user.userId;
+    const patientId = req.user.userId;
     return this.medicalDocumentsService.deleteDocument(documentId, patientId);
   }
 
@@ -134,7 +134,7 @@ export class MedicalDocumentsController {
     @Param('id') documentId: string,
     @Body() body: { doctorId: string },
   ) {
-    const patientId = req.user.id || req.user.userId;
+    const patientId = req.user.userId;
     return this.medicalDocumentsService.shareDocument(documentId, patientId, body.doctorId);
   }
 
@@ -147,7 +147,7 @@ export class MedicalDocumentsController {
     @Param('id') documentId: string,
     @Param('doctorId') doctorId: string,
   ) {
-    const patientId = req.user.id || req.user.userId;
+    const patientId = req.user.userId;
     return this.medicalDocumentsService.unshareDocument(documentId, patientId, doctorId);
   }
 }

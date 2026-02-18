@@ -625,4 +625,47 @@ export class EmailService {
       throw new Error('Failed to send appointment rescheduled email');
     }
   }
+
+  async sendTeamInvitation(
+    email: string,
+    inviterName: string,
+    memberName: string,
+    role: string,
+  ) {
+    const frontendUrl = process.env.FRONTEND_PRO_URL || 'http://localhost:3002';
+
+    const mailOptions = {
+      from: `"Plateforme Santé" <${process.env.SMTP_USER || 'noreply@healthplatform.com'}>`,
+      to: email,
+      subject: `Invitation à rejoindre l'équipe de ${inviterName}`,
+      html: `
+        <html>
+          <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+            <div style="background: linear-gradient(135deg, #0d9488, #0891b2); padding: 20px; border-radius: 12px 12px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0;">Plateforme Santé</h1>
+            </div>
+            <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px;">
+              <p>Bonjour ${memberName},</p>
+              <p><strong>${inviterName}</strong> vous invite à rejoindre son équipe en tant que <strong>${role}</strong>.</p>
+              <p>Cliquez sur le bouton ci-dessous pour accepter l'invitation et accéder à la plateforme :</p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${frontendUrl}/auth/register" style="background: #0d9488; color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold;">Accepter l'invitation</a>
+              </div>
+              <p style="color: #64748b; font-size: 14px;">Si vous n'avez pas demandé cette invitation, vous pouvez ignorer cet email.</p>
+              <p>Cordialement,<br>L'équipe Health Platform</p>
+            </div>
+          </body>
+        </html>
+      `,
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Team invitation email sent to ${email}: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      this.logger.error(`Failed to send team invitation email to ${email}:`, error);
+      throw new Error('Failed to send team invitation email');
+    }
+  }
 }

@@ -35,7 +35,7 @@ export class MedicalNotesController {
       tags?: string[];
     },
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.medicalNotesService.createNote(doctorId, body);
   }
 
@@ -49,7 +49,7 @@ export class MedicalNotesController {
     @Query('type') type?: NoteType,
     @Query('tags') tags?: string,
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.medicalNotesService.getMyNotes(doctorId, {
       patientId,
       type,
@@ -62,7 +62,7 @@ export class MedicalNotesController {
    */
   @Get('patient/:patientId')
   async getPatientNotes(@Req() req, @Param('patientId') patientId: string) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.medicalNotesService.getPatientNotes(patientId, doctorId);
   }
 
@@ -71,7 +71,7 @@ export class MedicalNotesController {
    */
   @Get('appointment/:appointmentId')
   async getAppointmentNotes(@Req() req, @Param('appointmentId') appointmentId: string) {
-    const requesterId = req.user.id || req.user.userId;
+    const requesterId = req.user.userId;
     const requesterRole = req.user.role;
     return this.medicalNotesService.getAppointmentNotes(appointmentId, requesterId, requesterRole);
   }
@@ -81,7 +81,7 @@ export class MedicalNotesController {
    */
   @Get('tags')
   async getMyTags(@Req() req) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.medicalNotesService.getDoctorTags(doctorId);
   }
 
@@ -90,7 +90,7 @@ export class MedicalNotesController {
    */
   @Get('search')
   async searchNotes(@Req() req, @Query('q') query: string) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.medicalNotesService.searchNotes(doctorId, query);
   }
 
@@ -99,7 +99,7 @@ export class MedicalNotesController {
    */
   @Get(':id')
   async getNote(@Req() req, @Param('id') noteId: string) {
-    const requesterId = req.user.id || req.user.userId;
+    const requesterId = req.user.userId;
     const requesterRole = req.user.role;
     return this.medicalNotesService.getNote(noteId, requesterId, requesterRole);
   }
@@ -119,7 +119,7 @@ export class MedicalNotesController {
       tags?: string[];
     },
   ) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.medicalNotesService.updateNote(noteId, doctorId, body);
   }
 
@@ -128,7 +128,7 @@ export class MedicalNotesController {
    */
   @Delete(':id')
   async deleteNote(@Req() req, @Param('id') noteId: string) {
-    const doctorId = req.user.id || req.user.userId;
+    const doctorId = req.user.userId;
     return this.medicalNotesService.deleteNote(noteId, doctorId);
   }
 }

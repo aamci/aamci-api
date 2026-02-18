@@ -33,7 +33,7 @@ export class PatientRecordController {
 
   @Get(':patientId/profile')
   async getPatientProfile(@Param('patientId') patientId: string, @Request() req: any) {
-    return this.patientRecordService.getPatientProfile(patientId, req.user.sub);
+    return this.patientRecordService.getPatientProfile(patientId, req.user.userId);
   }
 
   @Patch(':patientId/profile')
@@ -42,7 +42,7 @@ export class PatientRecordController {
     @Body() data: any,
     @Request() req: any,
   ) {
-    return this.patientRecordService.updatePatientProfile(patientId, req.user.sub, data);
+    return this.patientRecordService.updatePatientProfile(patientId, req.user.userId, data);
   }
 
   // ==========================================
@@ -68,7 +68,7 @@ export class PatientRecordController {
     @Body() data: any,
     @Request() req: any,
   ) {
-    return this.patientRecordService.createMedicalHistory(patientId, req.user.sub, data);
+    return this.patientRecordService.createMedicalHistory(patientId, req.user.userId, data);
   }
 
   @Patch('medical-history/:id')
@@ -77,12 +77,12 @@ export class PatientRecordController {
     @Body() data: any,
     @Request() req: any,
   ) {
-    return this.patientRecordService.updateMedicalHistory(id, req.user.sub, data);
+    return this.patientRecordService.updateMedicalHistory(id, req.user.userId, data);
   }
 
   @Delete('medical-history/:id')
   async deleteMedicalHistory(@Param('id') id: string, @Request() req: any) {
-    return this.patientRecordService.deleteMedicalHistory(id, req.user.sub);
+    return this.patientRecordService.deleteMedicalHistory(id, req.user.userId);
   }
 
   // ==========================================
@@ -137,7 +137,7 @@ export class PatientRecordController {
     @Body() data: any,
     @Request() req: any,
   ) {
-    return this.patientRecordService.createTreatment(patientId, req.user.sub, data);
+    return this.patientRecordService.createTreatment(patientId, req.user.userId, data);
   }
 
   @Patch('treatments/:id')
@@ -186,7 +186,7 @@ export class PatientRecordController {
     @Body() data: any,
     @Request() req: any,
   ) {
-    return this.patientRecordService.createBiometric(patientId, req.user.sub, data);
+    return this.patientRecordService.createBiometric(patientId, req.user.userId, data);
   }
 
   @Delete('biometrics/:id')
@@ -212,7 +212,7 @@ export class PatientRecordController {
     @Body() data: any,
     @Request() req: any,
   ) {
-    return this.patientRecordService.createObservation(patientId, req.user.sub, data);
+    return this.patientRecordService.createObservation(patientId, req.user.userId, data);
   }
 
   @Patch('observations/:id')
@@ -243,7 +243,7 @@ export class PatientRecordController {
     @Body() data: any,
     @Request() req: any,
   ) {
-    return this.patientRecordService.createLabResult(patientId, req.user.sub, data);
+    return this.patientRecordService.createLabResult(patientId, req.user.userId, data);
   }
 
   @Delete('lab-results/:id')

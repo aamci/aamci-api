@@ -16,14 +16,14 @@ export class FacilityManagerGuard implements CanActivate {
     }
 
     // Les docteurs peuvent gérer leur propre agenda
-    if (user.role === 'DOCTOR' && user.sub === targetDoctorId) {
+    if (user.role === 'DOCTOR' && user.userId === targetDoctorId) {
       return true;
     }
 
     // Vérifier si l'utilisateur est un gestionnaire autorisé
     if (user.role === 'FACILITY_MANAGER') {
       const manager = await this.prisma.facilityManager.findUnique({
-        where: { userId: user.sub },
+        where: { userId: user.userId },
         include: {
           facility: {
             include: {
