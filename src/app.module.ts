@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD, APP_FILTER } from '@nestjs/core';
+import { CustomThrottlerGuard } from './common/throttler.guard';
 import { HealthModule } from './health/health.module';
 import { PrismaService } from './common/prisma.service';
 import { DatabaseHealthService } from './common/database-health.service';
@@ -96,7 +97,7 @@ import { MessagesModule } from './messages/messages.module';
     // Apply throttler globally
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: CustomThrottlerGuard,
     },
     // Global exception filters for Prisma errors
     {

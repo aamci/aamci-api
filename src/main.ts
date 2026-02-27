@@ -9,6 +9,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
   const origins = [
   'http://localhost:3000',
+  'http://localhost:53785',
   'http://localhost:3001',
   'https://web-doctor-p93i.onrender.com',
   'https://web-patient.onrender.com',
@@ -22,8 +23,12 @@ async function bootstrap() {
     bodyParser.raw({ type: 'application/json' }),
   );
 
+  const isDev = process.env.NODE_ENV !== 'production';
   app.enableCors({
-    origin: (origin, cb) => cb(null, !origin || origins.includes(origin)),
+    origin: (origin, cb) => {
+      const isLocalhost = isDev && !!origin && /^http:\/\/localhost:\d+$/.test(origin);
+      cb(null, !origin || origins.includes(origin) || isLocalhost);
+    },
     methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
     allowedHeaders: ['Content-Type','Authorization'],
     credentials: true, // Required for cookies to work cross-origin

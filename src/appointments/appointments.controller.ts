@@ -89,7 +89,9 @@ export class AppointmentsController {
       patientId?: string;
       doctorId?: string;
       kindId?: string;
-      notes?: string
+      notes?: string;
+      beneficiaryName?: string;
+      beneficiaryPhone?: string;
     },
     @Req() req: any
   ) {
@@ -107,6 +109,8 @@ export class AppointmentsController {
         kindId: dto.kindId,
         notes: dto.notes,
         doctorId,
+        beneficiaryName: dto.beneficiaryName,
+        beneficiaryPhone: dto.beneficiaryPhone,
       });
     }
 

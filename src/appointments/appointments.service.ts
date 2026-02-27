@@ -91,6 +91,8 @@ export class AppointmentsService {
     kindId?: string;
     notes?: string;
     doctorId?: string;
+    beneficiaryName?: string;
+    beneficiaryPhone?: string;
   }) {
     // Déterminer le doctorId (ownerId du slot)
     let ownerId = data.doctorId;
@@ -191,6 +193,8 @@ export class AppointmentsService {
         notes: data.notes,
         status: initialStatus,
         type: 'CONSULTATION',
+        beneficiaryName: data.beneficiaryName,
+        beneficiaryPhone: data.beneficiaryPhone,
       },
       include: {
         slot: true,

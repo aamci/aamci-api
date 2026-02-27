@@ -119,6 +119,10 @@ model Appointment {
   kindId     String?
   kind       AppointmentKind?  @relation(fields: [kindId], references: [id])
 
+  // Bénéficiaire (réservation pour quelqu'un d'autre)
+  beneficiaryName  String?
+  beneficiaryPhone String?
+
   // Téléconsultation
   videoSessionId   String?   @unique  // ID unique pour la session vidéo
   videoRoomUrl     String?   // URL de la salle de visio (pour intégration externe)
