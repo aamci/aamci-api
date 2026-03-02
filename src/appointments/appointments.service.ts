@@ -4,7 +4,7 @@ import { PrismaService } from '../common/prisma.service';
 import { DoctorAbsencesService } from '../doctor-absences/doctor-absences.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
-type AppointmentStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'NO_SHOW';
+type AppointmentStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'NO_SHOW' | 'COMPLETED';
 
 @Injectable()
 export class AppointmentsService {

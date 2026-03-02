@@ -45,6 +45,7 @@ import { PrescriptionTemplatesModule } from './prescription-templates/prescripti
 import { AnalyticsModule } from './analytics/analytics.module';
 import { ConsultationsModule } from './consultations/consultations.module';
 import { MessagesModule } from './messages/messages.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -89,6 +90,7 @@ import { MessagesModule } from './messages/messages.module';
     AnalyticsModule,
     ConsultationsModule,
     MessagesModule,
+    AdminModule,
   ],
   controllers: [HealthController],
   providers: [

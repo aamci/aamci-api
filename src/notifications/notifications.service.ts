@@ -1,20 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { EmailService } from '../common/email.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
+import { NotificationsGateway } from './notifications.gateway';
 
 @Injectable()
 export class NotificationsService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
+    @Inject(forwardRef(() => NotificationsGateway))
+    private gateway: NotificationsGateway,
   ) {}
 
   /**
    * Create a new notification
    */
   async create(dto: CreateNotificationDto) {
-    return this.prisma.notification.create({
+    const created = await this.prisma.notification.create({
       data: {
         userId: dto.userId,
         type: dto.type,
@@ -48,6 +51,15 @@ export class NotificationsService {
         },
       },
     });
+
+    // Push real-time notification via WebSocket
+    try {
+      this.gateway.emitToUser(dto.userId, 'new_notification', created);
+    } catch {
+      // Gateway may not be initialized yet (e.g. during tests)
+    }
+
+    return created;
   }
 
   /**

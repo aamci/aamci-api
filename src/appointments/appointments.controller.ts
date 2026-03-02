@@ -19,7 +19,7 @@ export class AppointmentsController {
   async updateStatus(
     @Req() req,
     @Param('id') id: string,
-    @Body() dto: { status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'NO_SHOW' },
+    @Body() dto: { status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'NO_SHOW' | 'COMPLETED' },
   ) {
     const userId = req.user.userId;
     return this.svc.updateStatusAsOwner(id, userId, dto.status);

@@ -5,7 +5,7 @@ import { EmailService } from '../common/email.service';
 import { PrismaService } from '../common/prisma.service';
 import * as crypto from 'crypto';
 
-export type Role = 'PATIENT' | 'DOCTOR' | 'PHARMACY' | 'HOSPITAL' | 'ADMIN';
+export type Role = 'PATIENT' | 'DOCTOR' | 'PHARMACY' | 'HOSPITAL' | 'ADMIN' | 'FACILITY_MANAGER' | 'ADMIN_READ' | 'ADMIN_WRITE' | 'GUEST';
 
 @Injectable()
 export class AuthService {
@@ -16,7 +16,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async register(email: string, password: string, role: Role = 'PATIENT') {
+  async register(email: string, password: string, role: Role = 'PATIENT', fullName?: string) {
     const exists = await this.users.findByEmail(email);
     if (exists) {
       // 409 plus parlant que 401 ici
@@ -29,7 +29,7 @@ export class AuthService {
     tokenExpiry.setHours(tokenExpiry.getHours() + 1); // Expire dans 1h
 
     // crée l'utilisateur (le UsersService doit hasher)
-    const user = await this.users.create(email, password, role);
+    const user = await this.users.create(email, password, role, fullName);
 
     // Mettre à jour avec le token de vérification
     await this.prisma.user.update({

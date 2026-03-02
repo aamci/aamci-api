@@ -14,16 +14,28 @@ export class EncryptionService {
   private readonly saltLength = 64;
 
   /**
-   * Récupère la clé de chiffrement depuis les variables d'environnement
-   * IMPORTANT: Cette clé doit être stockée de manière sécurisée (ex: AWS Secrets Manager, Azure Key Vault)
+   * Récupère la clé de chiffrement courante depuis les variables d'environnement.
    */
   private getEncryptionKey(): Buffer {
     const key = process.env.ENCRYPTION_KEY;
     if (!key) {
       throw new Error('ENCRYPTION_KEY must be set in environment variables');
     }
-    // La clé doit être en base64 et faire 32 bytes (256 bits)
     return Buffer.from(key, 'base64');
+  }
+
+  /**
+   * Récupère l'ancienne clé (ENCRYPTION_KEY_OLD) si elle est définie.
+   * Présente uniquement pendant une rotation en cours.
+   */
+  private getOldEncryptionKey(): Buffer | null {
+    const key = process.env.ENCRYPTION_KEY_OLD;
+    return key ? Buffer.from(key, 'base64') : null;
+  }
+
+  /** Indique si une rotation est en cours (ancienne clé disponible). */
+  hasOldKey(): boolean {
+    return !!process.env.ENCRYPTION_KEY_OLD;
   }
 
   /**
@@ -31,6 +43,40 @@ export class EncryptionService {
    */
   static generateEncryptionKey(): string {
     return crypto.randomBytes(32).toString('base64');
+  }
+
+  /**
+   * Déchiffre avec une clé explicite (sans passer par la variable d'env).
+   * Utilisé en interne pour la rotation paresseuse.
+   */
+  private decryptWithKey(encryptedText: string, key: Buffer): string {
+    const parts = encryptedText.split(':');
+    if (parts.length !== 3) throw new Error('Invalid encrypted text format');
+    const iv = Buffer.from(parts[0], 'base64');
+    const tag = Buffer.from(parts[1], 'base64');
+    const encrypted = parts[2];
+    const decipher = crypto.createDecipheriv(this.algorithm, key, iv);
+    decipher.setAuthTag(tag);
+    let decrypted = decipher.update(encrypted, 'base64', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  }
+
+  /**
+   * Tente de déchiffrer avec la clé courante, puis avec l'ancienne clé si disponible.
+   * Retourne le texte en clair et un indicateur signalant si l'ancienne clé a été utilisée
+   * (ce qui déclenche une re-chiffrement asynchrone dans PrismaService).
+   */
+  decryptBestEffort(encryptedText: string): { plaintext: string; usedOldKey: boolean } {
+    const currentKey = this.getEncryptionKey();
+    try {
+      return { plaintext: this.decryptWithKey(encryptedText, currentKey), usedOldKey: false };
+    } catch {
+      const oldKey = this.getOldEncryptionKey();
+      if (!oldKey) throw new Error('Decryption failed and no old key available');
+      const plaintext = this.decryptWithKey(encryptedText, oldKey);
+      return { plaintext, usedOldKey: true };
+    }
   }
 
   /**

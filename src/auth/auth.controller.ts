@@ -25,6 +25,7 @@ export class AuthController {
       registerDto.email,
       registerDto.password,
       registerDto.role ?? 'PATIENT',
+      registerDto.fullName,
     );
 
     // Ne pas set le cookie, attendre la vérification d'email

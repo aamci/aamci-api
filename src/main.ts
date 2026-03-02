@@ -3,7 +3,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { exec } from 'child_process';
 import * as bodyParser from 'body-parser';
-import * as cookieParser from 'cookie-parser';
+import cookieParser from 'cookie-parser';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
@@ -14,6 +15,8 @@ async function bootstrap() {
   'https://web-doctor-p93i.onrender.com',
   'https://web-patient.onrender.com',
 ];
+
+  app.useWebSocketAdapter(new IoAdapter(app));
 
   // Enable cookie parser for reading httpOnly cookies
   app.use(cookieParser());

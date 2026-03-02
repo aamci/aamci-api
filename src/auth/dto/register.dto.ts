@@ -6,6 +6,10 @@ enum Role {
   PHARMACY = 'PHARMACY',
   HOSPITAL = 'HOSPITAL',
   ADMIN = 'ADMIN',
+  FACILITY_MANAGER = 'FACILITY_MANAGER',
+  ADMIN_READ = 'ADMIN_READ',
+  ADMIN_WRITE = 'ADMIN_WRITE',
+  GUEST = 'GUEST',
 }
 
 export class RegisterDto {
@@ -17,6 +21,10 @@ export class RegisterDto {
   @IsNotEmpty({ message: 'Le mot de passe est obligatoire' })
   @MinLength(6, { message: 'Le mot de passe doit contenir au moins 6 caractères' })
   password: string;
+
+  @IsOptional()
+  @IsString()
+  fullName?: string;
 
   @IsOptional()
   @IsEnum(Role, { message: 'Le rôle doit être PATIENT, DOCTOR, PHARMACY, HOSPITAL ou ADMIN' })

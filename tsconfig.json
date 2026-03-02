@@ -6,6 +6,7 @@
     "experimentalDecorators": true,
     "target": "ES2021",
     "outDir": "./dist",
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "esModuleInterop": true
   }
 }

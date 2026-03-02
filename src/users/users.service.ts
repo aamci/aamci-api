@@ -31,10 +31,10 @@ export class UsersService {
     });
   }
 
-  async create(email: string, password: string, role: Role) {
+  async create(email: string, password: string, role: Role, fullName?: string) {
     const hash = await argon2.hash(password);
     return this.prisma.user.create({
-      data: { email, password: hash, role },
+      data: { email, password: hash, role, ...(fullName ? { fullName } : {}) },
     });
   }
 

@@ -19,6 +19,7 @@ model User {
   sex                String?
   birthdate          DateTime?
   city               String?
+  isActive           Boolean           @default(true)
   emailVerified      Boolean           @default(false)
   verificationToken  String?           @unique
   tokenExpiry        DateTime?
@@ -97,6 +98,9 @@ model User {
   conversationsAsP1       Conversation[]         @relation("ConversationParticipant1")
   conversationsAsP2       Conversation[]         @relation("ConversationParticipant2")
   sentMessages            Message[]              @relation("MessageSender")
+
+  // Admin audit
+  adminAuditLogs          AdminAuditLog[]        @relation("AdminAuditLogs")
 }
 
 enum Role {
@@ -106,6 +110,9 @@ enum Role {
   HOSPITAL
   ADMIN
   FACILITY_MANAGER
+  ADMIN_READ
+  ADMIN_WRITE
+  GUEST
 }
 
 model Appointment {
@@ -144,6 +151,7 @@ enum AppointmentStatus {
   CONFIRMED
   CANCELLED
   NO_SHOW
+  COMPLETED
 }
 
 model AppointmentHistory {
@@ -1742,4 +1750,34 @@ enum MessageType {
   IMAGE
   FILE
   SYSTEM
+}
+
+// ==========================================
+// ADMIN AUDIT LOG
+// ==========================================
+
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  admin      User     @relation("AdminAuditLogs", fields: [adminId], references: [id], onDelete: Cascade)
+  action     String   // e.g. CREATE_USER, SUSPEND_USER, UPDATE_USER, CANCEL_APPOINTMENT
+  targetId   String?
+  targetType String?  // USER, APPOINTMENT, SETTING, FACILITY
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([adminId])
+  @@index([createdAt])
+  @@index([action])
+}
+
+// ==========================================
+// PLATFORM SETTINGS
+// ==========================================
+
+model PlatformSetting {
+  key       String   @id
+  value     String   @db.Text
+  label     String?
+  updatedAt DateTime @updatedAt
 }

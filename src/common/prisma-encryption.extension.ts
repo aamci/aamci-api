@@ -1,153 +1,138 @@
-import { Prisma } from '@prisma/client';
 import { EncryptionService } from './encryption.service';
 
 /**
- * Extension Prisma pour chiffrer/déchiffrer automatiquement les champs sensibles
- *
- * Utilisation:
- * const prisma = new PrismaClient().$extends(createEncryptionExtension(encryptionService));
+ * Champs sensibles par modèle Prisma (minuscule = nom du modèle Prisma)
  */
-export function createEncryptionExtension(encryption: EncryptionService) {
-  return Prisma.defineExtension({
-    name: 'encryption',
-    query: {
-      patientProfile: {
-        // Chiffrer avant CREATE
-        async create({ args, query }) {
-          if (args.data) {
-            args.data = encryptPatientProfileFields(args.data, encryption);
-          }
-          const result = await query(args);
-          return decryptPatientProfileFields(result, encryption);
-        },
+const ENCRYPTED_STRING_FIELDS: Record<string, string[]> = {
+  patientProfile: [
+    'birthLastName',
+    'usageLastName',
+    'firstName',
+    'usualFirstName',
+    'birthPlace',
+    'birthCountry',
+    'addressLine1',
+    'postalCode',
+    'socialSecurityNumber',
+    'insuranceProvider',
+    'mutualInsurance',
+    'primaryDoctorName',
+    'bloodGroup',
+  ],
+  medicalNote: ['title', 'content'],
+  message: ['content'],
+  consultation: ['motif', 'interrogatoire', 'examen', 'notes'],
+  prescription: ['diagnosis', 'generalInstructions', 'notes'],
+  emergencyContact: ['fullName', 'phone', 'phoneSecondary', 'email'],
+  healthRecord: ['notes'],
+};
 
-        // Chiffrer avant UPDATE
-        async update({ args, query }) {
-          if (args.data) {
-            args.data = encryptPatientProfileFields(args.data, encryption);
-          }
-          const result = await query(args);
-          return decryptPatientProfileFields(result, encryption);
-        },
+/**
+ * Champs JSON à chiffrer après sérialisation (JSON.stringify → encrypt)
+ */
+const ENCRYPTED_JSON_FIELDS: Record<string, string[]> = {
+  healthRecord: [
+    'allergyDetails',
+    'medicalHistory',
+    'surgicalHistory',
+    'familyHistory',
+    'currentMedications',
+    'vaccinationRecord',
+  ],
+};
 
-        // Déchiffrer après FIND
-        async findUnique({ args, query }) {
-          const result = await query(args);
-          return result ? decryptPatientProfileFields(result, encryption) : result;
-        },
+/** Regex de détection d'un champ déjà chiffré (format iv:tag:data) */
+const ENCRYPTED_PATTERN = /^[A-Za-z0-9+/]+=*:[A-Za-z0-9+/]+=*:.+$/;
 
-        async findFirst({ args, query }) {
-          const result = await query(args);
-          return result ? decryptPatientProfileFields(result, encryption) : result;
-        },
-
-        async findMany({ args, query }) {
-          const results = await query(args);
-          return results.map(r => decryptPatientProfileFields(r, encryption));
-        },
-      },
-      medicalNote: {
-        // Chiffrer les notes médicales
-        async create({ args, query }) {
-          if (args.data) {
-            if (args.data.content) {
-              args.data.content = encryption.encrypt(args.data.content);
-            }
-            if (args.data.title) {
-              args.data.title = encryption.encrypt(args.data.title);
-            }
-          }
-          const result = await query(args);
-          return decryptMedicalNoteFields(result, encryption);
-        },
-
-        async update({ args, query }) {
-          if (args.data) {
-            if (args.data.content) {
-              args.data.content = encryption.encrypt(args.data.content as string);
-            }
-            if (args.data.title) {
-              args.data.title = encryption.encrypt(args.data.title as string);
-            }
-          }
-          const result = await query(args);
-          return decryptMedicalNoteFields(result, encryption);
-        },
-
-        async findUnique({ args, query }) {
-          const result = await query(args);
-          return result ? decryptMedicalNoteFields(result, encryption) : result;
-        },
-
-        async findFirst({ args, query }) {
-          const result = await query(args);
-          return result ? decryptMedicalNoteFields(result, encryption) : result;
-        },
-
-        async findMany({ args, query }) {
-          const results = await query(args);
-          return results.map(r => decryptMedicalNoteFields(r, encryption));
-        },
-      },
-    },
-  });
+function isEncrypted(value: string): boolean {
+  return ENCRYPTED_PATTERN.test(value);
 }
 
 /**
- * Liste des champs sensibles du PatientProfile à chiffrer
+ * Chiffre les champs sensibles d'un objet avant écriture en base.
+ * Appelé depuis le middleware Prisma avant les opérations create/update/upsert.
  */
-const SENSITIVE_PATIENT_FIELDS = [
-  'birthLastName',
-  'usageLastName',
-  'firstName',
-  'usualFirstName',
-  'birthPlace',
-  'birthCountry',
-  'addressLine1',
-  'postalCode',
-  'socialSecurityNumber',  // Très sensible!
-  'insuranceProvider',
-  'mutualInsurance',
-  'primaryDoctorName',
-  'bloodGroup',
-] as const;
+export function encryptBeforeWrite(
+  model: string,
+  data: any,
+  encryption: EncryptionService,
+): any {
+  if (!data || typeof data !== 'object') return data;
 
-/**
- * Chiffre les champs sensibles du PatientProfile
- */
-function encryptPatientProfileFields(data: any, encryption: EncryptionService): any {
+  const lowerModel = model.charAt(0).toLowerCase() + model.slice(1);
+  const stringFields = ENCRYPTED_STRING_FIELDS[lowerModel] ?? [];
+  const jsonFields = ENCRYPTED_JSON_FIELDS[lowerModel] ?? [];
+
+  if (stringFields.length === 0 && jsonFields.length === 0) return data;
+
   const encrypted = { ...data };
 
-  for (const field of SENSITIVE_PATIENT_FIELDS) {
-    if (encrypted[field] && typeof encrypted[field] === 'string') {
-      encrypted[field] = encryption.encrypt(encrypted[field]);
+  for (const field of stringFields) {
+    const value = encrypted[field];
+    if (value && typeof value === 'string' && !isEncrypted(value)) {
+      encrypted[field] = encryption.encrypt(value);
     }
   }
 
-  // Pour le numéro de sécu, on peut aussi créer un hash pour recherche
-  // (sans révéler le vrai numéro)
-  if (data.socialSecurityNumber) {
-    encrypted.socialSecurityNumberHash = encryption.hash(data.socialSecurityNumber);
+  for (const field of jsonFields) {
+    const value = encrypted[field];
+    if (value !== undefined && value !== null) {
+      const stringified =
+        typeof value === 'string' ? value : JSON.stringify(value);
+      if (!isEncrypted(stringified)) {
+        encrypted[field] = encryption.encrypt(stringified);
+      }
+    }
   }
 
   return encrypted;
 }
 
 /**
- * Déchiffre les champs sensibles du PatientProfile
+ * Déchiffre les champs sensibles d'un résultat après lecture de la base.
  */
-function decryptPatientProfileFields(data: any, encryption: EncryptionService): any {
-  if (!data) return data;
+export function decryptAfterRead(
+  model: string,
+  result: any,
+  encryption: EncryptionService,
+): any {
+  if (!result) return result;
 
-  const decrypted = { ...data };
+  const lowerModel = model.charAt(0).toLowerCase() + model.slice(1);
+  const stringFields = ENCRYPTED_STRING_FIELDS[lowerModel] ?? [];
+  const jsonFields = ENCRYPTED_JSON_FIELDS[lowerModel] ?? [];
 
-  for (const field of SENSITIVE_PATIENT_FIELDS) {
-    if (decrypted[field] && typeof decrypted[field] === 'string') {
+  if (stringFields.length === 0 && jsonFields.length === 0) return result;
+
+  if (Array.isArray(result)) {
+    return result.map((r) => decryptAfterRead(model, r, encryption));
+  }
+
+  const decrypted = { ...result };
+
+  for (const field of stringFields) {
+    const value = decrypted[field];
+    if (value && typeof value === 'string' && isEncrypted(value)) {
       try {
-        decrypted[field] = encryption.decrypt(decrypted[field]);
-      } catch (error) {
-        console.error(`Failed to decrypt field ${field}:`, error);
-        // En cas d'erreur, on laisse la valeur chiffrée
+        decrypted[field] = encryption.decrypt(value);
+      } catch {
+        // Laisser la valeur chiffrée en cas d'erreur (clé changée, etc.)
+      }
+    }
+  }
+
+  for (const field of jsonFields) {
+    const value = decrypted[field];
+    if (value && typeof value === 'string' && isEncrypted(value)) {
+      try {
+        const decryptedStr = encryption.decrypt(value);
+        try {
+          decrypted[field] = JSON.parse(decryptedStr);
+        } catch {
+          decrypted[field] = decryptedStr;
+        }
+      } catch {
+        // Laisser tel quel
       }
     }
   }
@@ -155,31 +140,99 @@ function decryptPatientProfileFields(data: any, encryption: EncryptionService): 
   return decrypted;
 }
 
+export interface ReencryptJob {
+  id: string;
+  data: Record<string, string>; // champ → nouvelle valeur chiffrée
+}
+
 /**
- * Déchiffre les champs des notes médicales
+ * Variante de decryptAfterRead pour la rotation paresseuse.
+ * Retourne le résultat déchiffré + les jobs de re-chiffrement à appliquer
+ * pour les champs encore chiffrés avec l'ancienne clé.
  */
-function decryptMedicalNoteFields(data: any, encryption: EncryptionService): any {
-  if (!data) return data;
+export function decryptAfterReadWithJobs(
+  model: string,
+  result: any,
+  encryption: EncryptionService,
+): { decrypted: any; jobs: ReencryptJob[] } {
+  const jobs: ReencryptJob[] = [];
 
-  const decrypted = { ...data };
+  if (!result) return { decrypted: result, jobs };
 
-  // Déchiffrer le contenu
-  if (decrypted.content) {
-    try {
-      decrypted.content = encryption.decrypt(decrypted.content);
-    } catch (error) {
-      console.error('Failed to decrypt medical note content:', error);
+  const lowerModel = model.charAt(0).toLowerCase() + model.slice(1);
+  const stringFields = ENCRYPTED_STRING_FIELDS[lowerModel] ?? [];
+  const jsonFields = ENCRYPTED_JSON_FIELDS[lowerModel] ?? [];
+
+  if (stringFields.length === 0 && jsonFields.length === 0) return { decrypted: result, jobs };
+
+  if (Array.isArray(result)) {
+    const allJobs: ReencryptJob[] = [];
+    const decryptedArray = result.map((r) => {
+      const { decrypted, jobs: j } = decryptAfterReadWithJobs(model, r, encryption);
+      allJobs.push(...j);
+      return decrypted;
+    });
+    return { decrypted: decryptedArray, jobs: allJobs };
+  }
+
+  const decrypted = { ...result };
+  const jobData: Record<string, string> = {};
+
+  for (const field of stringFields) {
+    const value = decrypted[field];
+    if (value && typeof value === 'string' && isEncrypted(value)) {
+      try {
+        const { plaintext, usedOldKey } = encryption.decryptBestEffort(value);
+        decrypted[field] = plaintext;
+        if (usedOldKey) {
+          jobData[field] = encryption.encrypt(plaintext);
+        }
+      } catch {
+        // laisser la valeur chiffrée
+      }
     }
   }
 
-  // Déchiffrer le titre
-  if (decrypted.title) {
-    try {
-      decrypted.title = encryption.decrypt(decrypted.title);
-    } catch (error) {
-      console.error('Failed to decrypt medical note title:', error);
+  for (const field of jsonFields) {
+    const value = decrypted[field];
+    if (value && typeof value === 'string' && isEncrypted(value)) {
+      try {
+        const { plaintext, usedOldKey } = encryption.decryptBestEffort(value);
+        try {
+          decrypted[field] = JSON.parse(plaintext);
+        } catch {
+          decrypted[field] = plaintext;
+        }
+        if (usedOldKey) {
+          jobData[field] = encryption.encrypt(plaintext);
+        }
+      } catch {
+        // laisser tel quel
+      }
     }
   }
 
-  return decrypted;
+  if (Object.keys(jobData).length > 0 && result.id) {
+    jobs.push({ id: result.id, data: jobData });
+  }
+
+  return { decrypted, jobs };
+}
+
+/**
+ * Retourne la liste des modèles et champs couverts par le chiffrement.
+ * Utilisé par l'endpoint /admin/encryption/status
+ */
+export function getEncryptionCoverage(): Record<string, { string: string[]; json: string[] }> {
+  const coverage: Record<string, { string: string[]; json: string[] }> = {};
+  for (const model of new Set([
+    ...Object.keys(ENCRYPTED_STRING_FIELDS),
+    ...Object.keys(ENCRYPTED_JSON_FIELDS),
+  ])) {
+    coverage[model] = {
+      string: ENCRYPTED_STRING_FIELDS[model] ?? [],
+      json: ENCRYPTED_JSON_FIELDS[model] ?? [],
+    };
+  }
+  return coverage;
 }

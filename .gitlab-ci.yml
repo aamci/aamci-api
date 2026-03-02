@@ -1,0 +1,112 @@
+# ─── CI/CD — API NestJS (@health/api) ────────────────────────────────────────
+#
+# Pipeline autonome déclenché par le pipeline racine via `trigger: include:`.
+# Peut aussi être utilisé directement sur le dépôt de l'app si nécessaire.
+#
+# Déclencheurs (gérés par le pipeline racine) :
+#   • Push sur une branche / MR   → test
+#   • Push sur main               → test + build image + deploy staging
+#   • Tag api/v*.*.*              → test + build image + deploy production (manuel)
+#
+# Variables à configurer (GitLab → Settings → CI/CD → Variables) :
+#   API_STAGING_DEPLOY_HOOK   URL webhook de re-déploiement staging
+#   API_PROD_DEPLOY_HOOK      URL webhook de re-déploiement production
+
+stages:
+  - test
+  - build
+  - staging
+  - production
+
+.api-node-base:
+  image: node:20-alpine
+  before_script:
+    - corepack enable
+    - corepack prepare pnpm@9 --activate
+    - pnpm install --frozen-lockfile
+
+# ── Test ──────────────────────────────────────────────────────────────────────
+
+test:api:
+  extends: .api-node-base
+  stage: test
+  rules:
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_TAG =~ /^api\/v.*/
+  script:
+    - cd apps/api
+    - pnpm test:cov
+  coverage: '/Lines\s*:\s*\d+\.?\d+%/'
+  artifacts:
+    paths:
+      - apps/api/coverage/
+    expire_in: 1 week
+
+# ── Build image Docker ────────────────────────────────────────────────────────
+
+build:api:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
+  needs: ["test:api"]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG =~ /^api\/v.*/
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$(echo -n $CI_REGISTRY_USER:$CI_JOB_TOKEN | base64)\"}}}" > /kaniko/.docker/config.json
+  script:
+    - /kaniko/executor
+      --context "$CI_PROJECT_DIR/apps/api"
+      --dockerfile "$CI_PROJECT_DIR/apps/api/Dockerfile"
+      --destination "$CI_REGISTRY_IMAGE/api:$CI_COMMIT_SHORT_SHA"
+      --destination "$CI_REGISTRY_IMAGE/api:latest"
+      --cache=true
+      --cache-ttl=24h
+
+# ── Deploy staging ────────────────────────────────────────────────────────────
+
+deploy:api:staging:
+  stage: staging
+  image: alpine:latest
+  needs: ["build:api"]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  environment:
+    name: api/staging
+    url: $API_STAGING_URL
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - |
+      if [ -n "$API_STAGING_DEPLOY_HOOK" ]; then
+        curl -f -s -X POST "$API_STAGING_DEPLOY_HOOK"
+        echo "Deploy staging déclenché."
+      else
+        echo "API_STAGING_DEPLOY_HOOK non définie — deploy ignoré."
+      fi
+
+# ── Deploy production ─────────────────────────────────────────────────────────
+
+deploy:api:production:
+  stage: production
+  image: alpine:latest
+  needs: ["build:api"]
+  when: manual
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^api\/v.*/
+      when: manual
+  environment:
+    name: api/production
+    url: $API_PROD_URL
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - |
+      if [ -n "$API_PROD_DEPLOY_HOOK" ]; then
+        curl -f -s -X POST "$API_PROD_DEPLOY_HOOK"
+        echo "Deploy production déclenché."
+      else
+        echo "API_PROD_DEPLOY_HOOK non définie — deploy ignoré."
+      fi
