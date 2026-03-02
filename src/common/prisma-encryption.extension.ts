@@ -41,6 +41,27 @@ const ENCRYPTED_JSON_FIELDS: Record<string, string[]> = {
   ],
 };
 
+/**
+ * Champs de relation (nom du champ dans le résultat) → modèle cible.
+ * Permet de déchiffrer récursivement les relations incluses (include: {}).
+ */
+const RELATION_FIELD_TO_MODEL: Record<string, string> = {
+  patientProfile:   'patientProfile',
+  healthRecord:     'healthRecord',
+  emergencyContact: 'emergencyContact',
+  emergencyContacts:'emergencyContact',
+  medicalNote:      'medicalNote',
+  medicalNotes:     'medicalNote',
+  consultation:     'consultation',
+  consultations:    'consultation',
+  prescription:     'prescription',
+  prescriptions:    'prescription',
+  message:          'message',
+  messages:         'message',
+  sentMessages:     'message',
+  receivedMessages: 'message',
+};
+
 /** Regex de détection d'un champ déjà chiffré (format iv:tag:data) */
 const ENCRYPTED_PATTERN = /^[A-Za-z0-9+/]+=*:[A-Za-z0-9+/]+=*:.+$/;
 
@@ -98,14 +119,22 @@ export function decryptAfterRead(
 ): any {
   if (!result) return result;
 
+  if (Array.isArray(result)) {
+    return result.map((r) => decryptAfterRead(model, r, encryption));
+  }
+
   const lowerModel = model.charAt(0).toLowerCase() + model.slice(1);
   const stringFields = ENCRYPTED_STRING_FIELDS[lowerModel] ?? [];
   const jsonFields = ENCRYPTED_JSON_FIELDS[lowerModel] ?? [];
 
-  if (stringFields.length === 0 && jsonFields.length === 0) return result;
+  // Vérifier si ce résultat contient des relations chiffrées incluses
+  const hasNestedRelations = Object.keys(RELATION_FIELD_TO_MODEL).some(
+    (f) => result[f] != null,
+  );
 
-  if (Array.isArray(result)) {
-    return result.map((r) => decryptAfterRead(model, r, encryption));
+  // Rien à faire : pas de champs chiffrés propres et pas de relations incluses
+  if (stringFields.length === 0 && jsonFields.length === 0 && !hasNestedRelations) {
+    return result;
   }
 
   const decrypted = { ...result };
@@ -137,6 +166,13 @@ export function decryptAfterRead(
     }
   }
 
+  // Déchiffrer récursivement les relations incluses (ex: user.findUnique({ include: { patientProfile: true } }))
+  for (const [fieldName, relatedModel] of Object.entries(RELATION_FIELD_TO_MODEL)) {
+    if (decrypted[fieldName] != null) {
+      decrypted[fieldName] = decryptAfterRead(relatedModel, decrypted[fieldName], encryption);
+    }
+  }
+
   return decrypted;
 }
 
@@ -159,12 +195,6 @@ export function decryptAfterReadWithJobs(
 
   if (!result) return { decrypted: result, jobs };
 
-  const lowerModel = model.charAt(0).toLowerCase() + model.slice(1);
-  const stringFields = ENCRYPTED_STRING_FIELDS[lowerModel] ?? [];
-  const jsonFields = ENCRYPTED_JSON_FIELDS[lowerModel] ?? [];
-
-  if (stringFields.length === 0 && jsonFields.length === 0) return { decrypted: result, jobs };
-
   if (Array.isArray(result)) {
     const allJobs: ReencryptJob[] = [];
     const decryptedArray = result.map((r) => {
@@ -173,6 +203,18 @@ export function decryptAfterReadWithJobs(
       return decrypted;
     });
     return { decrypted: decryptedArray, jobs: allJobs };
+  }
+
+  const lowerModel = model.charAt(0).toLowerCase() + model.slice(1);
+  const stringFields = ENCRYPTED_STRING_FIELDS[lowerModel] ?? [];
+  const jsonFields = ENCRYPTED_JSON_FIELDS[lowerModel] ?? [];
+
+  const hasNestedRelations = Object.keys(RELATION_FIELD_TO_MODEL).some(
+    (f) => result[f] != null,
+  );
+
+  if (stringFields.length === 0 && jsonFields.length === 0 && !hasNestedRelations) {
+    return { decrypted: result, jobs };
   }
 
   const decrypted = { ...result };
@@ -214,6 +256,13 @@ export function decryptAfterReadWithJobs(
 
   if (Object.keys(jobData).length > 0 && result.id) {
     jobs.push({ id: result.id, data: jobData });
+  }
+
+  // Déchiffrer récursivement les relations incluses
+  for (const [fieldName, relatedModel] of Object.entries(RELATION_FIELD_TO_MODEL)) {
+    if (decrypted[fieldName] != null) {
+      decrypted[fieldName] = decryptAfterRead(relatedModel, decrypted[fieldName], encryption);
+    }
   }
 
   return { decrypted, jobs };
