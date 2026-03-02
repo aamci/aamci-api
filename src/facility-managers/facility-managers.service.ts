@@ -178,7 +178,14 @@ export class FacilityManagersService {
         id: { in: allDoctorIds },
         role: 'DOCTOR',
       },
-      include: {
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        avatarUrl: true,
+        phone: true,
+        city: true,
+        isActive: true,
         doctorProfile: true,
       },
     });

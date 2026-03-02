@@ -6,6 +6,17 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 
+const PATIENT_SELECT = {
+  id: true,
+  fullName: true,
+  email: true,
+  phone: true,
+  avatarUrl: true,
+  sex: true,
+  birthdate: true,
+  city: true,
+} as const;
+
 @Injectable()
 export class PrescriptionsService {
   constructor(private prisma: PrismaService) {}
@@ -315,7 +326,7 @@ export class PrescriptionsService {
       where: { id: prescriptionId },
       data: updateData,
       include: {
-        patient: true,
+        patient: { select: PATIENT_SELECT },
         medications: true,
       },
     });
@@ -346,7 +357,7 @@ export class PrescriptionsService {
         issueDate: new Date(),
       },
       include: {
-        patient: true,
+        patient: { select: PATIENT_SELECT },
         medications: true,
       },
     });
@@ -431,7 +442,7 @@ export class PrescriptionsService {
         },
       },
       include: {
-        patient: true,
+        patient: { select: PATIENT_SELECT },
         medications: true,
       },
     });

@@ -2,6 +2,15 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 import { PrismaService } from '../common/prisma.service';
 import { Decimal } from '@prisma/client/runtime/library';
 
+const PATIENT_SELECT = {
+  id: true,
+  fullName: true,
+  email: true,
+  phone: true,
+  avatarUrl: true,
+  city: true,
+} as const;
+
 @Injectable()
 export class InvoicesService {
   constructor(private prisma: PrismaService) {}
@@ -273,7 +282,7 @@ export class InvoicesService {
       where: { id: invoiceId },
       data: updateData,
       include: {
-        patient: true,
+        patient: { select: PATIENT_SELECT },
         items: true,
       },
     });

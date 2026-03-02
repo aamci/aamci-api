@@ -44,7 +44,15 @@ export class SearchService {
 
     return this.prisma.user.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        avatarUrl: true,
+        phone: true,
+        sex: true,
+        city: true,
+        isActive: true,
         doctorProfile: true,
       },
       take: 50,

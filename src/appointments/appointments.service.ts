@@ -6,6 +6,18 @@ import { NotificationsService } from '../notifications/notifications.service';
 
 type AppointmentStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'NO_SHOW' | 'COMPLETED';
 
+/** Champs patient exposés dans les réponses — jamais le mot de passe ni les tokens */
+const PATIENT_SELECT = {
+  id: true,
+  fullName: true,
+  email: true,
+  phone: true,
+  avatarUrl: true,
+  sex: true,
+  birthdate: true,
+  city: true,
+} as const;
+
 @Injectable()
 export class AppointmentsService {
   constructor(
@@ -55,7 +67,7 @@ export class AppointmentsService {
         },
         orderBy: { createdAt: 'desc' },
         include: {
-          patient: true,
+          patient: { select: PATIENT_SELECT },
           slot: true,
         },
       });
@@ -198,7 +210,7 @@ export class AppointmentsService {
       },
       include: {
         slot: true,
-        patient: true,
+        patient: { select: PATIENT_SELECT },
         kind: true,
       },
     });
@@ -352,7 +364,7 @@ export class AppointmentsService {
     return this.prisma.appointment.findUnique({
       where: { id: appointmentId },
       include: {
-        patient: true,
+        patient: { select: PATIENT_SELECT },
         slot: true,
       },
     });
@@ -481,7 +493,7 @@ export class AppointmentsService {
         where: { id: appointmentId },
         data: updateData,
         include: {
-          patient: true,
+          patient: { select: PATIENT_SELECT },
           slot: true,
           kind: true,
         },
@@ -550,7 +562,7 @@ export class AppointmentsService {
       where: { id: appointmentId },
       data: updateData,
       include: {
-        patient: true,
+        patient: { select: PATIENT_SELECT },
         slot: true,
         kind: true,
       },
@@ -651,7 +663,7 @@ export class AppointmentsService {
       },
       include: {
         slot: true,
-        patient: true,
+        patient: { select: PATIENT_SELECT },
         kind: true,
       },
     });
@@ -697,7 +709,7 @@ export class AppointmentsService {
       data: updateData,
       include: {
         slot: true,
-        patient: true,
+        patient: { select: PATIENT_SELECT },
         kind: true,
       },
     });
@@ -753,7 +765,7 @@ export class AppointmentsService {
     },
     include: {
       slot: true,
-      patient: true,
+      patient: { select: PATIENT_SELECT },
     },
   });
 

@@ -1,6 +1,17 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 
+const PATIENT_SELECT = {
+  id: true,
+  fullName: true,
+  email: true,
+  phone: true,
+  avatarUrl: true,
+  sex: true,
+  birthdate: true,
+  city: true,
+} as const;
+
 @Injectable()
 export class SlotsService {
   constructor(private prisma: PrismaService) {}
@@ -147,7 +158,7 @@ export class SlotsService {
       include: {
         appointments: {
           include: {
-            patient: true,
+            patient: { select: PATIENT_SELECT },
             kind: true, // Inclure le type de consultation
           },
         },
@@ -221,7 +232,7 @@ export class SlotsService {
       },
       include: {
         appointments: {
-          include: { patient: true },
+          include: { patient: { select: PATIENT_SELECT } },
         },
       },
     });
@@ -235,7 +246,7 @@ export class SlotsService {
       where: { id },
       data: dto,
       include: {
-        appointments: { include: { patient: true } },
+        appointments: { include: { patient: { select: PATIENT_SELECT } } },
       },
     });
   }
