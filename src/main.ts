@@ -14,6 +14,7 @@ async function bootstrap() {
   'http://localhost:3001',
   'https://web-doctor-p93i.onrender.com',
   'https://web-patient.onrender.com',
+  'https://web-admin-bmdi.onrender.com'
 ];
 
   app.useWebSocketAdapter(new IoAdapter(app));

@@ -1,16 +1,19 @@
 # ─── CI/CD — API NestJS (@health/api) ────────────────────────────────────────
 #
-# Pipeline autonome déclenché par le pipeline racine via `trigger: include:`.
-# Peut aussi être utilisé directement sur le dépôt de l'app si nécessaire.
+# Pipeline autonome — à configurer comme CI config path dans le projet GitLab :
+#   Settings → CI/CD → General pipelines → CI/CD configuration file
+#   → apps/api/.gitlab-ci.yml
 #
-# Déclencheurs (gérés par le pipeline racine) :
-#   • Push sur une branche / MR   → test
-#   • Push sur main               → test + build image + deploy staging
-#   • Tag api/v*.*.*              → test + build image + deploy production (manuel)
+# Déclencheurs :
+#   • Push sur n'importe quelle branche / MR   → test
+#   • Push sur main                            → test + build image + deploy staging
+#   • Tag api/v*.*.*                           → test + build image + deploy production (manuel)
 #
 # Variables à configurer (GitLab → Settings → CI/CD → Variables) :
 #   API_STAGING_DEPLOY_HOOK   URL webhook de re-déploiement staging
 #   API_PROD_DEPLOY_HOOK      URL webhook de re-déploiement production
+#   API_STAGING_URL           URL publique staging
+#   API_PROD_URL              URL publique production
 
 stages:
   - test
@@ -23,7 +26,21 @@ stages:
   before_script:
     - corepack enable
     - corepack prepare pnpm@9 --activate
-    - pnpm install --frozen-lockfile
+    - pnpm install --no-frozen-lockfile
+
+# ── Validation README ─────────────────────────────────────────────────────────
+# Vérifie que tout module ajouté dans package.json est documenté dans README.md.
+# Ce job ne nécessite pas pnpm install — Node.js seul suffit.
+
+validate:readme:api:
+  image: node:20-alpine
+  stage: test
+  rules:
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_TAG =~ /^api\/v.*/
+  script:
+    - node scripts/validate-readme.js
+  allow_failure: false
 
 # ── Test ──────────────────────────────────────────────────────────────────────
 
@@ -34,12 +51,11 @@ test:api:
     - if: $CI_COMMIT_BRANCH
     - if: $CI_COMMIT_TAG =~ /^api\/v.*/
   script:
-    - cd apps/api
     - pnpm test:cov
   coverage: '/Lines\s*:\s*\d+\.?\d+%/'
   artifacts:
     paths:
-      - apps/api/coverage/
+      - coverage/
     expire_in: 1 week
 
 # ── Build image Docker ────────────────────────────────────────────────────────
@@ -58,8 +74,8 @@ build:api:
     - echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$(echo -n $CI_REGISTRY_USER:$CI_JOB_TOKEN | base64)\"}}}" > /kaniko/.docker/config.json
   script:
     - /kaniko/executor
-      --context "$CI_PROJECT_DIR/apps/api"
-      --dockerfile "$CI_PROJECT_DIR/apps/api/Dockerfile"
+      --context "$CI_PROJECT_DIR"
+      --dockerfile "$CI_PROJECT_DIR/Dockerfile"
       --destination "$CI_REGISTRY_IMAGE/api:$CI_COMMIT_SHORT_SHA"
       --destination "$CI_REGISTRY_IMAGE/api:latest"
       --cache=true
