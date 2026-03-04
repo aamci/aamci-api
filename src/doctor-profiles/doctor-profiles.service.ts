@@ -38,4 +38,23 @@ export class DoctorProfilesService {
     // retourne la version à jour
     return this.prisma.doctorProfile.findUnique({ where: { userId } });
   }
+  async search(query: string) {
+    return this.prisma.user.findMany({
+      where: {
+        role: 'DOCTOR',
+        OR: [
+          { fullName: { contains: query, mode: 'insensitive' } },
+          { doctorProfile: { specialty: { contains: query, mode: 'insensitive' } } },
+        ],
+      },
+      take: 20,
+      select: {
+        id: true,
+        fullName: true,
+        avatarUrl: true,
+        doctorProfile: { select: { specialty: true, city: true } },
+      },
+    });
+  }
+
 }

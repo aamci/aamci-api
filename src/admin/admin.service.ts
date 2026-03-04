@@ -475,6 +475,248 @@ export class AdminService {
     };
   }
 
+  // ─── Contracts ────────────────────────────────────────────────────────────
+
+  async getContracts(params: { page?: number; limit?: number; type?: string; status?: string; search?: string }) {
+    const page = Math.max(1, params.page ?? 1);
+    const limit = Math.min(100, Math.max(1, params.limit ?? 20));
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (params.type) where.type = params.type;
+    if (params.status) where.status = params.status;
+    if (params.search) where.entityName = { contains: params.search, mode: 'insensitive' };
+
+    const [contracts, total] = await Promise.all([
+      (this.prisma as any).contract.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, fullName: true, email: true, role: true } },
+          facility: { select: { id: true, name: true, type: true } },
+        },
+      }),
+      (this.prisma as any).contract.count({ where }),
+    ]);
+
+    return { contracts, total, page, limit, pages: Math.ceil(total / limit) };
+  }
+
+  async createContract(dto: {
+    title: string; type: string; entityName: string; userId?: string; facilityId?: string;
+    startDate: string; endDate?: string; value?: number; currency?: string; terms?: string; notes?: string; adminId: string;
+  }) {
+    const contract = await (this.prisma as any).contract.create({
+      data: {
+        title: dto.title,
+        type: dto.type,
+        entityName: dto.entityName,
+        userId: dto.userId ?? null,
+        facilityId: dto.facilityId ?? null,
+        startDate: new Date(dto.startDate),
+        endDate: dto.endDate ? new Date(dto.endDate) : null,
+        value: dto.value ?? null,
+        currency: dto.currency ?? 'XAF',
+        terms: dto.terms ?? null,
+        notes: dto.notes ?? null,
+        status: 'DRAFT',
+      },
+    });
+    await this.logAudit(dto.adminId, 'CREATE_CONTRACT', contract.id, 'CONTRACT', { type: dto.type, entityName: dto.entityName });
+    return contract;
+  }
+
+  async updateContract(id: string, dto: { status?: string; signedAt?: string; notes?: string; endDate?: string; value?: number }, adminId: string) {
+    const data: any = {};
+    if (dto.status) data.status = dto.status;
+    if (dto.signedAt) data.signedAt = new Date(dto.signedAt);
+    if (dto.endDate !== undefined) data.endDate = dto.endDate ? new Date(dto.endDate) : null;
+    if (dto.notes !== undefined) data.notes = dto.notes;
+    if (dto.value !== undefined) data.value = dto.value;
+
+    const contract = await (this.prisma as any).contract.update({ where: { id }, data });
+    await this.logAudit(adminId, 'UPDATE_CONTRACT', id, 'CONTRACT', dto);
+    return contract;
+  }
+
+  async getContractById(id: string) {
+    const c = await (this.prisma as any).contract.findUnique({
+      where: { id },
+      include: {
+        user: { select: { id: true, fullName: true, email: true, role: true, doctorProfile: { select: { specialty: true } } } },
+        facility: { select: { id: true, name: true, type: true, city: true } },
+      },
+    });
+    if (!c) throw new Error('Contrat non trouvé');
+    return c;
+  }
+
+  // ─── Support Tickets ──────────────────────────────────────────────────────
+
+  async getTickets(params: { page?: number; limit?: number; authorType?: string; status?: string; priority?: string }) {
+    const page = Math.max(1, params.page ?? 1);
+    const limit = Math.min(100, Math.max(1, params.limit ?? 20));
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (params.authorType) where.authorType = params.authorType;
+    if (params.status) where.status = params.status;
+    if (params.priority) where.priority = params.priority;
+
+    const [tickets, total] = await Promise.all([
+      (this.prisma as any).supportTicket.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          author: { select: { id: true, fullName: true, email: true, role: true } },
+        },
+      }),
+      (this.prisma as any).supportTicket.count({ where }),
+    ]);
+
+    return { tickets, total, page, limit, pages: Math.ceil(total / limit) };
+  }
+
+  async updateTicket(id: string, dto: { status?: string; response?: string; assignedTo?: string; priority?: string }, adminId: string) {
+    const data: any = { ...dto };
+    if (dto.status === 'RESOLVED' && !data.resolvedAt) data.resolvedAt = new Date();
+
+    const ticket = await (this.prisma as any).supportTicket.update({ where: { id }, data });
+    await this.logAudit(adminId, 'UPDATE_TICKET', id, 'TICKET', dto);
+    return ticket;
+  }
+
+  // ─── Statistics ───────────────────────────────────────────────────────────
+
+  async getPaymentStats(days = 30) {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    const [
+      totalRevenue,
+      totalTransactions,
+      successfulTransactions,
+      pendingTransactions,
+      failedTransactions,
+      revenueByProvider,
+      revenueTimeline,
+    ] = await Promise.all([
+      this.prisma.transaction.aggregate({ where: { status: 'SUCCESS' }, _sum: { amount: true } }),
+      this.prisma.transaction.count(),
+      this.prisma.transaction.count({ where: { status: 'SUCCESS' } }),
+      this.prisma.transaction.count({ where: { status: 'PENDING' } }),
+      this.prisma.transaction.count({ where: { status: 'FAILED' } }),
+      this.prisma.transaction.groupBy({ by: ['provider' as any], _sum: { amount: true }, _count: true, where: { status: 'SUCCESS' } }),
+      this.prisma.transaction.findMany({
+        where: { createdAt: { gte: since }, status: 'SUCCESS' },
+        select: { createdAt: true, amount: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
+
+    // Build timeline
+    const timelineMap: Record<string, number> = {};
+    for (let i = 0; i < days; i++) {
+      const d = new Date(since);
+      d.setDate(since.getDate() + i);
+      timelineMap[d.toISOString().slice(0, 10)] = 0;
+    }
+    for (const t of revenueTimeline) {
+      const key = t.createdAt.toISOString().slice(0, 10);
+      if (timelineMap[key] !== undefined) timelineMap[key] += Number(t.amount);
+    }
+
+    return {
+      totalRevenue: totalRevenue._sum.amount ?? 0,
+      totalTransactions,
+      successfulTransactions,
+      pendingTransactions,
+      failedTransactions,
+      successRate: totalTransactions > 0 ? Math.round((successfulTransactions / totalTransactions) * 100) : 0,
+      byProvider: revenueByProvider.map((p: any) => ({ provider: p.provider, amount: p._sum.amount ?? 0, count: p._count })),
+      timeline: Object.entries(timelineMap).map(([date, amount]) => ({ date, amount })),
+    };
+  }
+
+  async getPatientStats() {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [
+      totalPatients,
+      newPatientsThisMonth,
+      activePatients,
+      avgAppointmentsPerPatient,
+      topCities,
+    ] = await Promise.all([
+      this.prisma.user.count({ where: { role: 'PATIENT' } as any }),
+      this.prisma.user.count({ where: { role: 'PATIENT', createdAt: { gte: thirtyDaysAgo } } as any }),
+      this.prisma.user.count({ where: { role: 'PATIENT', isActive: true } as any }),
+      this.prisma.appointment.groupBy({
+        by: ['patientId'],
+        _count: true,
+      }).then((r) => r.length > 0 ? Math.round(r.reduce((s: any, x: any) => s + x._count, 0) / r.length * 10) / 10 : 0),
+      (this.prisma as any).user.groupBy({
+        by: ['city'],
+        where: { role: 'PATIENT', city: { not: null } },
+        _count: true,
+        orderBy: { _count: { city: 'desc' } },
+        take: 5,
+      }),
+    ]);
+
+    return {
+      totalPatients,
+      newPatientsThisMonth,
+      activePatients,
+      inactivePatients: totalPatients - activePatients,
+      avgAppointmentsPerPatient,
+      topCities: topCities.map((c: any) => ({ city: c.city, count: c._count })),
+    };
+  }
+
+  async getDoctorStats() {
+    const [
+      totalDoctors,
+      activeDoctors,
+      bySpecialty,
+      topDoctors,
+    ] = await Promise.all([
+      this.prisma.user.count({ where: { role: 'DOCTOR' } as any }),
+      this.prisma.user.count({ where: { role: 'DOCTOR', isActive: true } as any }),
+      (this.prisma as any).doctorProfile.groupBy({
+        by: ['specialty'],
+        _count: true,
+        orderBy: { _count: { specialty: 'desc' } },
+        take: 10,
+      }),
+      this.prisma.user.findMany({
+        where: { role: 'DOCTOR' } as any,
+        take: 10,
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          doctorProfile: { select: { specialty: true, averageRating: true, totalReviews: true } },
+          _count: { select: { appointments: true } },
+        } as any,
+        orderBy: { appointments: { _count: 'desc' } } as any,
+      }),
+    ]);
+
+    return {
+      totalDoctors,
+      activeDoctors,
+      inactiveDoctors: totalDoctors - activeDoctors,
+      bySpecialty: bySpecialty.map((s: any) => ({ specialty: s.specialty ?? 'Non renseignée', count: s._count })),
+      topDoctors,
+    };
+  }
+
   // ─── Encryption status ────────────────────────────────────────────────────
 
   getEncryptionStatus() {

@@ -101,6 +101,20 @@ model User {
 
   // Admin audit
   adminAuditLogs          AdminAuditLog[]        @relation("AdminAuditLogs")
+
+  // Contracts & Tickets
+  contracts               Contract[]             @relation("UserContracts")
+  supportTickets          SupportTicket[]        @relation("TicketAuthor")
+
+  // Referrals
+  referralsSent           Referral[]             @relation("ReferralFrom")
+  referralsReceived       Referral[]             @relation("ReferralTo")
+  referralsAsPatient      Referral[]             @relation("ReferralPatient")
+
+  // Medical Correspondences (courrier médical entre confrères)
+  correspondencesSent      MedicalCorrespondence[] @relation("CorrespondenceSender")
+  correspondencesReceived  MedicalCorrespondence[] @relation("CorrespondenceRecipient")
+  correspondencesAsPatient MedicalCorrespondence[] @relation("CorrespondencePatient")
 }
 
 enum Role {
@@ -742,6 +756,7 @@ model Facility {
   // many-to-many implicite : côté Facility on doit garder juste Facility[]
   doctors     DoctorProfile[]  @relation("DoctorFacilities")
   managers    FacilityManager[]
+  contracts   Contract[]       @relation("FacilityContracts")
 }
 
 enum FacilityType {
@@ -1780,4 +1795,164 @@ model PlatformSetting {
   value     String   @db.Text
   label     String?
   updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// CONTRACTS
+// ==========================================
+
+model Contract {
+  id          String         @id @default(cuid())
+  title       String
+  type        ContractType
+  status      ContractStatus @default(DRAFT)
+  entityName  String
+  userId      String?
+  facilityId  String?
+  startDate   DateTime
+  endDate     DateTime?
+  value       Float?
+  currency    String         @default("XAF")
+  terms       String?        @db.Text
+  notes       String?        @db.Text
+  signedAt    DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  user        User?          @relation("UserContracts", fields: [userId], references: [id], onDelete: SetNull)
+  facility    Facility?      @relation("FacilityContracts", fields: [facilityId], references: [id], onDelete: SetNull)
+
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum ContractType {
+  DOCTOR
+  HOSPITAL
+  CHU
+  CLINIC
+  PHARMACY
+  PARTNER
+}
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  TERMINATED
+  SUSPENDED
+}
+
+// ==========================================
+// SUPPORT TICKETS
+// ==========================================
+
+model SupportTicket {
+  id          String          @id @default(cuid())
+  title       String
+  description String          @db.Text
+  status      TicketStatus    @default(OPEN)
+  priority    TicketPriority  @default(MEDIUM)
+  category    String?
+  authorId    String
+  authorType  String          // PATIENT or DOCTOR
+  assignedTo  String?
+  response    String?         @db.Text
+  resolvedAt  DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  author      User            @relation("TicketAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([authorType])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// ─── Referrals ────────────────────────────────────────────────────────────────
+
+model Referral {
+  id            String          @id @default(cuid())
+  patientId     String
+  fromDoctorId  String
+  toDoctorId    String
+  reason        String          @db.Text
+  notes         String?         @db.Text
+  urgency       ReferralUrgency @default(NORMAL)
+  status        ReferralStatus  @default(PENDING)
+  response      String?         @db.Text
+  respondedAt   DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  patient    User @relation("ReferralPatient",  fields: [patientId],    references: [id])
+  fromDoctor User @relation("ReferralFrom",     fields: [fromDoctorId], references: [id])
+  toDoctor   User @relation("ReferralTo",       fields: [toDoctorId],   references: [id])
+
+  @@index([patientId])
+  @@index([fromDoctorId])
+  @@index([toDoctorId])
+  @@index([status])
+}
+
+enum ReferralStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  COMPLETED
+}
+
+enum ReferralUrgency {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+// ─── Medical Correspondences ──────────────────────────────────────────────────
+
+model MedicalCorrespondence {
+  id          String                 @id @default(cuid())
+  senderId    String
+  recipientId String
+  patientId   String?
+  category    CorrespondenceCategory @default(AUTRE)
+  subject     String
+  content     String                 @db.Text
+  isRead      Boolean                @default(false)
+  readAt      DateTime?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  sender    User  @relation("CorrespondenceSender",   fields: [senderId],    references: [id])
+  recipient User  @relation("CorrespondenceRecipient", fields: [recipientId], references: [id])
+  patient   User? @relation("CorrespondencePatient",  fields: [patientId],   references: [id])
+
+  @@index([senderId])
+  @@index([recipientId])
+  @@index([patientId])
+}
+
+enum CorrespondenceCategory {
+  COMPTE_RENDU
+  DEMANDE_AVIS
+  REPONSE_AVIS
+  TRANSFERT
+  AUTRE
 }

@@ -227,6 +227,80 @@ export class AdminController {
     return this.adminService.getDailyStats(days ? Number(days) : 30);
   }
 
+  // ─── Contracts ────────────────────────────────────────────────────────────
+
+  @Get('contracts')
+  async getContracts(
+    @Req() req,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('type') type?: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    requireAdminAccess(req.user);
+    return this.adminService.getContracts({ page: page ? Number(page) : undefined, limit: limit ? Number(limit) : undefined, type, status, search });
+  }
+
+  @Get('contracts/:id')
+  async getContract(@Req() req, @Param('id') id: string) {
+    requireAdminAccess(req.user);
+    return this.adminService.getContractById(id);
+  }
+
+  @Post('contracts')
+  async createContract(@Req() req, @Body() body: any) {
+    requireAdminWrite(req.user);
+    return this.adminService.createContract({ ...body, adminId: req.user.userId });
+  }
+
+  @Patch('contracts/:id')
+  async updateContract(@Req() req, @Param('id') id: string, @Body() body: any) {
+    requireAdminWrite(req.user);
+    return this.adminService.updateContract(id, body, req.user.userId);
+  }
+
+  // ─── Support Tickets ──────────────────────────────────────────────────────
+
+  @Get('tickets')
+  async getTickets(
+    @Req() req,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('authorType') authorType?: string,
+    @Query('status') status?: string,
+    @Query('priority') priority?: string,
+  ) {
+    requireAdminAccess(req.user);
+    return this.adminService.getTickets({ page: page ? Number(page) : undefined, limit: limit ? Number(limit) : undefined, authorType, status, priority });
+  }
+
+  @Patch('tickets/:id')
+  async updateTicket(@Req() req, @Param('id') id: string, @Body() body: any) {
+    requireAdminWrite(req.user);
+    return this.adminService.updateTicket(id, body, req.user.userId);
+  }
+
+  // ─── Detailed Statistics ──────────────────────────────────────────────────
+
+  @Get('stats/payments')
+  async getPaymentStats(@Req() req, @Query('days') days?: string) {
+    requireAdminAccess(req.user);
+    return this.adminService.getPaymentStats(days ? Number(days) : 30);
+  }
+
+  @Get('stats/patients')
+  async getPatientStats(@Req() req) {
+    requireAdminAccess(req.user);
+    return this.adminService.getPatientStats();
+  }
+
+  @Get('stats/doctors-detail')
+  async getDoctorStats(@Req() req) {
+    requireAdminAccess(req.user);
+    return this.adminService.getDoctorStats();
+  }
+
   // ─── Encryption ───────────────────────────────────────────────────────────
 
   @Get('encryption/status')

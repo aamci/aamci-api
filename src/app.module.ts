@@ -46,6 +46,9 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { ConsultationsModule } from './consultations/consultations.module';
 import { MessagesModule } from './messages/messages.module';
 import { AdminModule } from './admin/admin.module';
+import { TicketsModule } from './tickets/tickets.module';
+import { ReferralsModule } from './referrals/referrals.module';
+import { CorrespondencesModule } from './correspondences/correspondences.module';
 
 @Module({
   imports: [
@@ -91,6 +94,9 @@ import { AdminModule } from './admin/admin.module';
     ConsultationsModule,
     MessagesModule,
     AdminModule,
+    TicketsModule,
+    ReferralsModule,
+    CorrespondencesModule,
   ],
   controllers: [HealthController],
   providers: [

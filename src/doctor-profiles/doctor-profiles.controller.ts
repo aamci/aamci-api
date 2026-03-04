@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { DoctorProfilesService } from './doctor-profiles.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -27,4 +27,10 @@ export class DoctorProfilesController {
     const userId = req.user.userId;
     return this.svc.updateMine(userId, body ?? {});
   }
+  // GET /doctor-profiles/search?q=xxx
+  @Get('search')
+  async search(@Query('q') q: string) {
+    return this.svc.search(q ?? '');
+  }
+
 }
