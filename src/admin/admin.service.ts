@@ -1,11 +1,16 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { EmailService } from '../common/email.service';
 import { getEncryptionCoverage } from '../common/prisma-encryption.extension';
 import * as argon2 from 'argon2';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+  ) {}
 
   // ─── Users ───────────────────────────────────────────────────────────────
 
@@ -72,7 +77,43 @@ export class AdminService {
         createdAt: true,
         updatedAt: true,
         doctorProfile: {
-          select: { specialty: true, city: true, presentation: true },
+          select: {
+            specialty: true,
+            city: true,
+            presentation: true,
+            hospitalType: true,
+            address: true,
+            formations: true,
+            experiences: true,
+            averageRating: true,
+            totalReviews: true,
+            autoConfirmPatientBookings: true,
+            facilities: { select: { id: true, name: true, type: true, city: true } },
+          },
+        },
+        patientProfile: {
+          select: {
+            civility: true,
+            firstName: true,
+            birthLastName: true,
+            usageLastName: true,
+            birthDate: true,
+            birthPlace: true,
+            birthCountry: true,
+            phonePrimary: true,
+            phoneSecondary: true,
+            addressLine1: true,
+            postalCode: true,
+            city: true,
+            country: true,
+            insuranceProvider: true,
+            mutualInsurance: true,
+            bloodGroup: true,
+            heightCm: true,
+            weightKg: true,
+            primaryDoctorName: true,
+            patientCode: true,
+          },
         },
         _count: {
           select: { appointments: true },
@@ -80,7 +121,33 @@ export class AdminService {
       } as any,
     });
     if (!user) throw new NotFoundException('Utilisateur non trouvé');
-    return user;
+
+    // Fetch contracts linked to this user
+    let contracts: any[] = [];
+    try {
+      contracts = await (this.prisma as any).contract.findMany({
+        where: { userId: id },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          title: true,
+          type: true,
+          status: true,
+          entityName: true,
+          startDate: true,
+          endDate: true,
+          value: true,
+          currency: true,
+          signedAt: true,
+          createdAt: true,
+        },
+      });
+    } catch {
+      // Contract model may not be available (migration pending)
+      contracts = [];
+    }
+
+    return { ...user, contracts };
   }
 
   async updateUser(
@@ -109,6 +176,54 @@ export class AdminService {
 
   async activateUser(id: string) {
     return this.updateUser(id, { isActive: true });
+  }
+
+  async resetUserPassword(id: string, adminId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email: true, fullName: true },
+    });
+    if (!user) throw new NotFoundException('Utilisateur non trouvé');
+
+    // Generate a secure 12-character temporary password
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+    const tempPassword = Array.from(crypto.randomBytes(12))
+      .map((b) => chars[b % chars.length])
+      .join('');
+
+    const hash = await argon2.hash(tempPassword);
+    await this.prisma.user.update({
+      where: { id },
+      data: { password: hash } as any,
+    });
+
+    // Send the temp password by email
+    try {
+      await this.emailService.sendAdminPasswordReset(
+        user.email,
+        user.fullName ?? user.email,
+        tempPassword,
+      );
+    } catch (err) {
+      // Don't fail if email fails — log and continue
+      console.error('Failed to send admin password reset email:', err);
+    }
+
+    await this.logAudit(adminId, 'RESET_PASSWORD', id, 'USER', { email: user.email });
+    return { success: true, message: 'Mot de passe temporaire envoyé par email.' };
+  }
+
+  async verifyUserEmail(id: string, adminId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id }, select: { id: true, email: true, emailVerified: true } });
+    if (!user) throw new NotFoundException('Utilisateur non trouvé');
+    if (user.emailVerified) return { success: true, message: 'Email déjà vérifié.' };
+
+    await this.prisma.user.update({
+      where: { id },
+      data: { emailVerified: true, verificationToken: null, tokenExpiry: null } as any,
+    });
+    await this.logAudit(adminId, 'VERIFY_EMAIL', id, 'USER', { email: user.email });
+    return { success: true, message: 'Email vérifié manuellement.' };
   }
 
   async createUser(dto: {
@@ -321,6 +436,36 @@ export class AdminService {
     ]);
 
     return { facilities, total, page, limit, pages: Math.ceil(total / limit) };
+  }
+
+  async getFacilityById(id: string) {
+    const facility = await this.prisma.facility.findUnique({
+      where: { id },
+      include: {
+        doctors: {
+          select: {
+            userId: true,
+            specialty: true,
+            city: true,
+            averageRating: true,
+            totalReviews: true,
+            user: { select: { id: true, fullName: true, email: true, phone: true, isActive: true, avatarUrl: true } },
+          },
+        },
+        managers: {
+          include: {
+            user: { select: { id: true, fullName: true, email: true, phone: true } },
+          },
+        },
+        contracts: {
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, title: true, type: true, status: true, startDate: true, endDate: true, value: true, currency: true, signedAt: true },
+        },
+        _count: { select: { doctors: true, managers: true } },
+      },
+    });
+    if (!facility) throw new NotFoundException('Établissement non trouvé');
+    return facility;
   }
 
   // ─── Audit logs ───────────────────────────────────────────────────────────

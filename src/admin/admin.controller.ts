@@ -92,6 +92,18 @@ export class AdminController {
     return this.adminService.activateUser(id);
   }
 
+  @Post('users/:id/reset-password')
+  async resetUserPassword(@Req() req, @Param('id') id: string) {
+    requireAdminWrite(req.user);
+    return this.adminService.resetUserPassword(id, req.user.userId);
+  }
+
+  @Post('users/:id/verify-email')
+  async verifyUserEmail(@Req() req, @Param('id') id: string) {
+    requireAdminWrite(req.user);
+    return this.adminService.verifyUserEmail(id, req.user.userId);
+  }
+
   // ─── Appointments ─────────────────────────────────────────────────────────
 
   @Get('appointments')
@@ -174,6 +186,12 @@ export class AdminController {
       limit: limit ? Number(limit) : undefined,
       search,
     });
+  }
+
+  @Get('facilities/:id')
+  async getFacility(@Req() req, @Param('id') id: string) {
+    requireAdminAccess(req.user);
+    return this.adminService.getFacilityById(id);
   }
 
   // ─── Audit logs ───────────────────────────────────────────────────────────

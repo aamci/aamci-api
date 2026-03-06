@@ -349,6 +349,110 @@ export class NotificationsService {
   }
 
   /**
+   * Helper: Create appointment pending notification (sent to patient when autoConfirm=false)
+   */
+  async createAppointmentPending(
+    userId: string,
+    appointmentId: string,
+    appointmentDate: Date,
+  ) {
+    const formattedDate = appointmentDate.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: {
+        patient: true,
+        slot: true,
+        kind: true,
+      },
+    });
+
+    if (!appointment) throw new Error('Appointment not found');
+
+    const doctor = await this.prisma.user.findUnique({
+      where: { id: appointment.slot.ownerId },
+    });
+
+    const notification = await this.create({
+      userId,
+      type: 'APPOINTMENT_PENDING',
+      title: 'Demande de rendez-vous reçue',
+      message: `Votre demande de rendez-vous du ${formattedDate} est en attente de confirmation`,
+      relatedAppointmentId: appointmentId,
+      sendEmail: true,
+    });
+
+    try {
+      await this.emailService.sendAppointmentPending(
+        appointment.patient.email,
+        appointment.patient.fullName || 'Patient',
+        doctor?.fullName || 'Votre médecin',
+        appointmentDate,
+        appointment.kind?.name || 'Consultation',
+      );
+    } catch (error) {
+      console.error('Failed to send pending appointment email:', error);
+    }
+
+    return notification;
+  }
+
+  /**
+   * Helper: Notify doctor of a new patient booking
+   */
+  async notifyDoctorNewBooking(
+    doctorId: string,
+    appointmentId: string,
+    appointmentDate: Date,
+    autoConfirmed: boolean,
+  ) {
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: {
+        patient: true,
+        kind: true,
+      },
+    });
+
+    if (!appointment) return;
+
+    const doctor = await this.prisma.user.findUnique({
+      where: { id: doctorId },
+    });
+
+    if (!doctor) return;
+
+    await this.create({
+      userId: doctorId,
+      type: 'APPOINTMENT_CONFIRMED',
+      title: 'Nouveau rendez-vous',
+      message: `${appointment.patient.fullName || 'Un patient'} a pris rendez-vous le ${appointmentDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`,
+      relatedAppointmentId: appointmentId,
+      sendEmail: true,
+    });
+
+    try {
+      await this.emailService.sendDoctorNewBookingNotification(
+        doctor.email,
+        doctor.fullName || 'Médecin',
+        appointment.patient.fullName || 'Patient',
+        appointmentDate,
+        appointment.kind?.name || 'Consultation',
+        autoConfirmed,
+      );
+    } catch (error) {
+      console.error('Failed to send doctor new booking email:', error);
+    }
+  }
+
+  /**
    * Helper: Create appointment rescheduled notification
    */
   async createAppointmentRescheduled(

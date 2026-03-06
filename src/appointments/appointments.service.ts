@@ -240,9 +240,29 @@ export class AppointmentsService {
           appointment.id,
           requestedStart,
         );
+      } else {
+        await this.notificationsService.createAppointmentPending(
+          data.patientId,
+          appointment.id,
+          requestedStart,
+        );
       }
     } catch (error) {
       console.error('Failed to send appointment notification:', error);
+    }
+
+    // Notifier le médecin de la nouvelle réservation (si c'est un patient qui réserve)
+    if (isPatientBooking) {
+      try {
+        await this.notificationsService.notifyDoctorNewBooking(
+          ownerId,
+          appointment.id,
+          requestedStart,
+          initialStatus === 'CONFIRMED',
+        );
+      } catch (error) {
+        console.error('Failed to send doctor booking notification:', error);
+      }
     }
 
     return appointment;
@@ -791,10 +811,27 @@ export class AppointmentsService {
         appointment.id,
         new Date(slot.start),
       );
+    } else {
+      await this.notificationsService.createAppointmentPending(
+        patientId,
+        appointment.id,
+        new Date(slot.start),
+      );
     }
-    // Si pas auto-confirmé, on pourrait envoyer une notification "en attente de confirmation"
   } catch (error) {
     console.error('Failed to send appointment notification:', error);
+  }
+
+  // Notifier le médecin de la nouvelle réservation patient
+  try {
+    await this.notificationsService.notifyDoctorNewBooking(
+      slot.ownerId,
+      appointment.id,
+      new Date(slot.start),
+      autoConfirm,
+    );
+  } catch (error) {
+    console.error('Failed to send doctor booking notification:', error);
   }
 
   return appointment;

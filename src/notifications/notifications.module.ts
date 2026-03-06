@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 import { NotificationsGateway } from './notifications.gateway';
+import { AppointmentReminderScheduler } from './appointment-reminder.scheduler';
 import { PrismaService } from '../common/prisma.service';
 import { EmailService } from '../common/email.service';
 
@@ -14,7 +15,13 @@ import { EmailService } from '../common/email.service';
     }),
   ],
   controllers: [NotificationsController],
-  providers: [NotificationsService, NotificationsGateway, PrismaService, EmailService],
+  providers: [
+    NotificationsService,
+    NotificationsGateway,
+    AppointmentReminderScheduler,
+    PrismaService,
+    EmailService,
+  ],
   exports: [NotificationsService, NotificationsGateway],
 })
 export class NotificationsModule {}

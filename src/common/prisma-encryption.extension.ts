@@ -128,8 +128,9 @@ export function decryptAfterRead(
   const jsonFields = ENCRYPTED_JSON_FIELDS[lowerModel] ?? [];
 
   // Vérifier si ce résultat contient des relations chiffrées incluses
+  // On ne considère comme relation que les champs qui sont des objets (pas des primitives string/number/bool)
   const hasNestedRelations = Object.keys(RELATION_FIELD_TO_MODEL).some(
-    (f) => result[f] != null,
+    (f) => result[f] != null && typeof result[f] === 'object',
   );
 
   // Rien à faire : pas de champs chiffrés propres et pas de relations incluses
@@ -167,8 +168,9 @@ export function decryptAfterRead(
   }
 
   // Déchiffrer récursivement les relations incluses (ex: user.findUnique({ include: { patientProfile: true } }))
+  // On ne traite que les champs qui sont des objets (pas des primitives — ex: notification.message est une string, pas une relation)
   for (const [fieldName, relatedModel] of Object.entries(RELATION_FIELD_TO_MODEL)) {
-    if (decrypted[fieldName] != null) {
+    if (decrypted[fieldName] != null && typeof decrypted[fieldName] === 'object') {
       decrypted[fieldName] = decryptAfterRead(relatedModel, decrypted[fieldName], encryption);
     }
   }
@@ -210,7 +212,7 @@ export function decryptAfterReadWithJobs(
   const jsonFields = ENCRYPTED_JSON_FIELDS[lowerModel] ?? [];
 
   const hasNestedRelations = Object.keys(RELATION_FIELD_TO_MODEL).some(
-    (f) => result[f] != null,
+    (f) => result[f] != null && typeof result[f] === 'object',
   );
 
   if (stringFields.length === 0 && jsonFields.length === 0 && !hasNestedRelations) {
@@ -258,9 +260,9 @@ export function decryptAfterReadWithJobs(
     jobs.push({ id: result.id, data: jobData });
   }
 
-  // Déchiffrer récursivement les relations incluses
+  // Déchiffrer récursivement les relations incluses (objets uniquement, pas les primitives)
   for (const [fieldName, relatedModel] of Object.entries(RELATION_FIELD_TO_MODEL)) {
-    if (decrypted[fieldName] != null) {
+    if (decrypted[fieldName] != null && typeof decrypted[fieldName] === 'object') {
       decrypted[fieldName] = decryptAfterRead(relatedModel, decrypted[fieldName], encryption);
     }
   }

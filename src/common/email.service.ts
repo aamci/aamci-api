@@ -626,6 +626,200 @@ export class EmailService {
     }
   }
 
+  async sendAdminPasswordReset(email: string, userName: string, tempPassword: string) {
+    const mailOptions = {
+      from: `"Plateforme Santé" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Votre mot de passe a été réinitialisé',
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+              .content { background: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-top: none; }
+              .pwd-box { background: #1e1b4b; color: #a5b4fc; font-family: monospace; font-size: 22px; font-weight: bold; letter-spacing: 3px; padding: 18px 24px; border-radius: 8px; text-align: center; margin: 24px 0; }
+              .warning { background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 5px; margin-top: 20px; font-size: 13px; }
+              .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>🔑 Réinitialisation de mot de passe</h1>
+            </div>
+            <div class="content">
+              <p>Bonjour ${userName},</p>
+              <p>Un administrateur a réinitialisé votre mot de passe. Voici votre mot de passe temporaire :</p>
+              <div class="pwd-box">${tempPassword}</div>
+              <p>Connectez-vous avec ce mot de passe, puis changez-le immédiatement depuis vos paramètres de compte.</p>
+              <div class="warning">
+                <strong>⚠️ Important :</strong>
+                <ul style="margin: 8px 0 0; padding-left: 20px;">
+                  <li>Ce mot de passe est <strong>valable 30 minutes</strong>.</li>
+                  <li>Ne partagez jamais votre mot de passe.</li>
+                  <li>Si vous n'avez pas demandé cette réinitialisation, contactez le support immédiatement.</li>
+                </ul>
+              </div>
+              <p style="margin-top: 24px;">Cordialement,<br>L'équipe Health Platform</p>
+            </div>
+            <div class="footer">
+              <p>© ${new Date().getFullYear()} Plateforme Santé. Tous droits réservés.</p>
+            </div>
+          </body>
+        </html>
+      `,
+    };
+
+    const info = await this.transporter.sendMail(mailOptions);
+    this.logger.log(`Admin password reset email sent to ${email}: ${info.messageId}`);
+    return { success: true, messageId: info.messageId };
+  }
+
+  async sendAppointmentPending(
+    email: string,
+    patientName: string,
+    doctorName: string,
+    appointmentDate: Date,
+    appointmentType: string,
+  ) {
+    const formattedDate = appointmentDate.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const mailOptions = {
+      from: `"Plateforme Santé" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Demande de rendez-vous reçue - Health Platform',
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+              .content { background: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-top: none; }
+              .appointment-box { background-color: #f5f3ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #7c3aed; }
+              .badge { display: inline-block; background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; }
+              .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>⏳ Demande de rendez-vous reçue</h1>
+            </div>
+            <div class="content">
+              <p>Bonjour ${patientName},</p>
+              <p>Votre demande de rendez-vous a bien été reçue et est en attente de confirmation par le médecin :</p>
+              <div class="appointment-box">
+                <p style="margin: 8px 0;"><strong>📅 Date et heure souhaitées :</strong> ${formattedDate}</p>
+                <p style="margin: 8px 0;"><strong>👨‍⚕️ Médecin :</strong> Dr. ${doctorName}</p>
+                <p style="margin: 8px 0;"><strong>🏥 Type de consultation :</strong> ${appointmentType}</p>
+                <p style="margin: 12px 0 0;"><span class="badge">En attente de confirmation</span></p>
+              </div>
+              <p>Vous recevrez un email dès que le médecin aura confirmé ou modifié votre rendez-vous.</p>
+              <p>Cordialement,<br>L'équipe Health Platform</p>
+            </div>
+            <div class="footer">
+              <p>© ${new Date().getFullYear()} Plateforme Santé. Tous droits réservés.</p>
+            </div>
+          </body>
+        </html>
+      `,
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Appointment pending email sent to ${email}: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      this.logger.error(`Failed to send appointment pending email to ${email}:`, error);
+      throw new Error('Failed to send appointment pending email');
+    }
+  }
+
+  async sendDoctorNewBookingNotification(
+    doctorEmail: string,
+    doctorName: string,
+    patientName: string,
+    appointmentDate: Date,
+    appointmentType: string,
+    autoConfirmed: boolean,
+  ) {
+    const formattedDate = appointmentDate.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const mailOptions = {
+      from: `"Plateforme Santé" <${process.env.SMTP_USER}>`,
+      to: doctorEmail,
+      subject: `Nouveau rendez-vous — ${patientName}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: linear-gradient(135deg, #0d9488 0%, #0891b2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+              .content { background: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-top: none; }
+              .appointment-box { background-color: #f0fdfa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0d9488; }
+              .badge-confirmed { display: inline-block; background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; }
+              .badge-pending { display: inline-block; background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; }
+              .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>📅 Nouveau rendez-vous</h1>
+            </div>
+            <div class="content">
+              <p>Bonjour Dr. ${doctorName},</p>
+              <p>Un patient a pris rendez-vous sur votre agenda :</p>
+              <div class="appointment-box">
+                <p style="margin: 8px 0;"><strong>👤 Patient :</strong> ${patientName}</p>
+                <p style="margin: 8px 0;"><strong>📅 Date et heure :</strong> ${formattedDate}</p>
+                <p style="margin: 8px 0;"><strong>🏥 Type de consultation :</strong> ${appointmentType}</p>
+                <p style="margin: 12px 0 0;">
+                  ${autoConfirmed
+                    ? '<span class="badge-confirmed">Auto-confirmé</span>'
+                    : '<span class="badge-pending">En attente de votre confirmation</span>'
+                  }
+                </p>
+              </div>
+              ${!autoConfirmed ? '<p><strong>Action requise :</strong> Veuillez confirmer ou refuser ce rendez-vous depuis votre espace professionnel.</p>' : ''}
+              <p>Cordialement,<br>L'équipe Health Platform</p>
+            </div>
+            <div class="footer">
+              <p>© ${new Date().getFullYear()} Plateforme Santé. Tous droits réservés.</p>
+            </div>
+          </body>
+        </html>
+      `,
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Doctor new booking email sent to ${doctorEmail}: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      this.logger.error(`Failed to send doctor new booking email to ${doctorEmail}:`, error);
+      // Non-fatal: don't throw
+    }
+  }
+
   async sendTeamInvitation(
     email: string,
     inviterName: string,

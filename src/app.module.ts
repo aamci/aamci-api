@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { CustomThrottlerGuard } from './common/throttler.guard';
@@ -52,11 +53,12 @@ import { CorrespondencesModule } from './correspondences/correspondences.module'
 
 @Module({
   imports: [
-    // Rate limiting: max 10 requests per 60 seconds per IP
+    ScheduleModule.forRoot(),
+    // Rate limiting: 200 req/min globally; sensitive endpoints override with stricter limits
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 60 seconds
-        limit: 10, // 10 requests max
+        limit: 200, // 200 requests max (normal API usage)
       },
     ]),
     HealthModule,
