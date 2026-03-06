@@ -4,8 +4,9 @@ import { JwtService } from '@nestjs/jwt';
 import { EmailService } from '../common/email.service';
 import { PrismaService } from '../common/prisma.service';
 import * as crypto from 'crypto';
+import * as argon2 from 'argon2';
 
-export type Role = 'PATIENT' | 'DOCTOR' | 'PHARMACY' | 'HOSPITAL' | 'ADMIN' | 'FACILITY_MANAGER' | 'ADMIN_READ' | 'ADMIN_WRITE' | 'GUEST';
+export type Role = 'PATIENT' | 'DOCTOR' | 'PHARMACY' | 'HOSPITAL' | 'ADMIN' | 'FACILITY_MANAGER' | 'ADMIN_READ' | 'ADMIN_WRITE' | 'GUEST' | 'SECRETARY';
 
 @Injectable()
 export class AuthService {
@@ -163,6 +164,56 @@ export class AuthService {
     });
 
     return this.sign(user.id, user.email, user.role as Role);
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.users.findByEmail(email);
+    // Anti-enumeration: always return without error even if user not found
+    if (!user) return;
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetExpiry = new Date();
+    resetExpiry.setHours(resetExpiry.getHours() + 1);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetPasswordToken: resetToken,
+        resetPasswordExpiry: resetExpiry,
+      } as any,
+    });
+
+    try {
+      await this.email.sendPasswordResetEmail(email, resetToken, user.fullName || undefined);
+    } catch (error) {
+      console.error('Failed to send password reset email:', error);
+    }
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.user.findFirst({
+      where: { resetPasswordToken: token } as any,
+    });
+
+    if (!user) {
+      throw new BadRequestException('Token invalide ou expiré');
+    }
+
+    const expiry = (user as any).resetPasswordExpiry as Date | null;
+    if (!expiry || expiry < new Date()) {
+      throw new BadRequestException('Token invalide ou expiré');
+    }
+
+    const hash = await argon2.hash(newPassword);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hash,
+        resetPasswordToken: null,
+        resetPasswordExpiry: null,
+      } as any,
+    });
   }
 
   private sign(sub: string, email: string, role: Role) {

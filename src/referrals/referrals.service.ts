@@ -1,9 +1,13 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ReferralsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationsService,
+  ) {}
 
   async create(fromDoctorId: string, dto: {
     patientId: string;
@@ -20,7 +24,19 @@ export class ReferralsService {
     const toDoctor = await this.prisma.user.findUnique({ where: { id: dto.toDoctorId } });
     if (!toDoctor || toDoctor.role !== 'DOCTOR') throw new NotFoundException('Médecin destinataire introuvable');
 
-    return this.prisma.referral.create({
+    // Prevent duplicate active referrals for the same patient to the same doctor
+    const existing = await this.prisma.referral.findFirst({
+      where: {
+        patientId: dto.patientId,
+        toDoctorId: dto.toDoctorId,
+        status: { in: ['PENDING', 'ACCEPTED'] as any },
+      },
+    });
+    if (existing) throw new ConflictException('Un transfert actif existe déjà pour ce patient vers ce médecin');
+
+    const fromDoctor = await this.prisma.user.findUnique({ where: { id: fromDoctorId } });
+
+    const referral = await this.prisma.referral.create({
       data: {
         patientId: dto.patientId,
         fromDoctorId,
@@ -35,6 +51,18 @@ export class ReferralsService {
         toDoctor: { select: { id: true, fullName: true, email: true, doctorProfile: { select: { specialty: true } } } },
       },
     });
+
+    // Notify the receiving doctor
+    try {
+      await this.notifications.create({
+        userId: dto.toDoctorId,
+        type: 'NEW_REFERRAL',
+        title: 'Nouveau dossier reçu',
+        message: `Dr ${fromDoctor?.fullName || 'Un confrère'} vous adresse le patient ${patient.fullName || 'un patient'}`,
+      });
+    } catch { /* non-blocking */ }
+
+    return referral;
   }
 
   async getSent(doctorId: string) {
@@ -60,11 +88,17 @@ export class ReferralsService {
   }
 
   async respond(referralId: string, doctorId: string, dto: { status: string; response?: string }) {
-    const referral = await this.prisma.referral.findUnique({ where: { id: referralId } });
+    const referral = await this.prisma.referral.findUnique({
+      where: { id: referralId },
+      include: {
+        patient: { select: { id: true, fullName: true } },
+        toDoctor: { select: { id: true, fullName: true } },
+      },
+    });
     if (!referral) throw new NotFoundException('Adressage introuvable');
     if (referral.toDoctorId !== doctorId) throw new ForbiddenException('Non autorisé');
 
-    return this.prisma.referral.update({
+    const updated = await this.prisma.referral.update({
       where: { id: referralId },
       data: {
         status: dto.status as any,
@@ -76,6 +110,30 @@ export class ReferralsService {
         fromDoctor: { select: { id: true, fullName: true, email: true } },
         toDoctor: { select: { id: true, fullName: true, email: true } },
       },
+    });
+
+    // Notify the sender about the response
+    try {
+      const accepted = dto.status === 'ACCEPTED';
+      await this.notifications.create({
+        userId: referral.fromDoctorId,
+        type: 'REFERRAL_RESPONSE',
+        title: accepted ? 'Dossier accepté' : 'Dossier refusé',
+        message: `Dr ${referral.toDoctor?.fullName || 'Le médecin'} a ${accepted ? 'accepté' : 'refusé'} le dossier de ${referral.patient?.fullName || 'votre patient'}`,
+      });
+    } catch { /* non-blocking */ }
+
+    return updated;
+  }
+
+  async getReceivedPatients(doctorId: string) {
+    return this.prisma.referral.findMany({
+      where: { toDoctorId: doctorId, status: 'ACCEPTED' as any },
+      include: {
+        patient: { select: { id: true, fullName: true, email: true, phone: true, avatarUrl: true, birthdate: true } },
+        fromDoctor: { select: { id: true, fullName: true } },
+      },
+      orderBy: { respondedAt: 'desc' },
     });
   }
 

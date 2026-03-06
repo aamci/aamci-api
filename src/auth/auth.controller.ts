@@ -8,6 +8,8 @@ import { FacebookAuthGuard } from './guards/facebook-auth.guard';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Controller('auth')
 @UsePipes(new ValidationPipe({
@@ -143,6 +145,22 @@ export class AuthController {
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // Max 3 resend attempts per minute
   async resendVerification(@Body() resendDto: ResendVerificationDto) {
     return this.auth.resendVerificationEmail(resendDto.email);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    await this.auth.forgotPassword(dto.email);
+    return { message: 'Si cet email existe, vous recevrez un lien de réinitialisation dans quelques minutes.' };
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    await this.auth.resetPassword(dto.token, dto.password);
+    return { message: 'Mot de passe réinitialisé avec succès.' };
   }
 
   private setAuthCookie(res: Response, token: string) {

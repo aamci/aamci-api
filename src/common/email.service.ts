@@ -862,4 +862,5 @@ export class EmailService {
       throw new Error('Failed to send team invitation email');
     }
   }
+
 }

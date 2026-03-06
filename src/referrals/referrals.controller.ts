@@ -28,6 +28,12 @@ export class ReferralsController {
     return this.referralsService.getReceived(req.user.userId);
   }
 
+  /** Get patients transferred to the current doctor (accepted referrals) */
+  @Get('received-patients')
+  getReceivedPatients(@Req() req) {
+    return this.referralsService.getReceivedPatients(req.user.userId);
+  }
+
   /** Accept or decline a received referral */
   @Patch(':id/respond')
   respond(

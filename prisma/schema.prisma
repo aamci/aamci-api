@@ -21,8 +21,10 @@ model User {
   city               String?
   isActive           Boolean           @default(true)
   emailVerified      Boolean           @default(false)
-  verificationToken  String?           @unique
-  tokenExpiry        DateTime?
+  verificationToken     String?           @unique
+  tokenExpiry           DateTime?
+  resetPasswordToken    String?           @unique
+  resetPasswordExpiry   DateTime?
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
@@ -127,6 +129,7 @@ enum Role {
   ADMIN_READ
   ADMIN_WRITE
   GUEST
+  SECRETARY
 }
 
 model Appointment {
