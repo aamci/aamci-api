@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { EmailService } from '../common/email.service';
 import { getEncryptionCoverage } from '../common/prisma-encryption.extension';
@@ -878,6 +878,83 @@ export class AdminService {
         ? null
         : 'ENCRYPTION_KEY manquante — les données ne sont pas chiffrées',
     };
+  }
+
+  // ─── Facility Managers ────────────────────────────────────────────────────
+
+  async getFacilityManagerProfile(userId: string) {
+    const fm = await this.prisma.facilityManager.findUnique({
+      where: { userId },
+      include: {
+        facility: { select: { id: true, name: true, type: true, city: true } },
+      },
+    });
+    if (!fm) return null;
+
+    // Enrich managedDoctorIds with user info
+    const doctors = fm.managedDoctorIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: fm.managedDoctorIds } },
+          select: {
+            id: true, fullName: true, email: true,
+            doctorProfile: { select: { specialty: true, city: true } },
+          },
+        })
+      : [];
+
+    return { ...fm, managedDoctors: doctors };
+  }
+
+  async createFacilityManagerProfile(data: {
+    userId: string;
+    facilityId: string;
+    managedDoctorIds?: string[];
+  }) {
+    const user = await this.prisma.user.findUnique({ where: { id: data.userId } });
+    if (!user) throw new NotFoundException('Utilisateur introuvable');
+    if (user.role !== 'FACILITY_MANAGER') throw new BadRequestException('L\'utilisateur doit avoir le rôle FACILITY_MANAGER');
+
+    const facility = await this.prisma.facility.findUnique({ where: { id: data.facilityId } });
+    if (!facility) throw new NotFoundException('Établissement introuvable');
+
+    const existing = await this.prisma.facilityManager.findUnique({ where: { userId: data.userId } });
+    if (existing) throw new BadRequestException('Un profil gestionnaire existe déjà pour cet utilisateur');
+
+    const fm = await this.prisma.facilityManager.create({
+      data: {
+        userId: data.userId,
+        facilityId: data.facilityId,
+        managedDoctorIds: data.managedDoctorIds ?? [],
+      },
+      include: {
+        facility: { select: { id: true, name: true, type: true, city: true } },
+      },
+    });
+    return fm;
+  }
+
+  async updateFacilityManagerProfile(
+    userId: string,
+    data: { facilityId?: string; managedDoctorIds?: string[] },
+  ) {
+    const fm = await this.prisma.facilityManager.findUnique({ where: { userId } });
+    if (!fm) throw new NotFoundException('Profil gestionnaire introuvable');
+
+    if (data.facilityId) {
+      const facility = await this.prisma.facility.findUnique({ where: { id: data.facilityId } });
+      if (!facility) throw new NotFoundException('Établissement introuvable');
+    }
+
+    return this.prisma.facilityManager.update({
+      where: { userId },
+      data: {
+        ...(data.facilityId && { facilityId: data.facilityId }),
+        ...(data.managedDoctorIds !== undefined && { managedDoctorIds: data.managedDoctorIds }),
+      },
+      include: {
+        facility: { select: { id: true, name: true, type: true, city: true } },
+      },
+    });
   }
 
   // ─── Finances ─────────────────────────────────────────────────────────────

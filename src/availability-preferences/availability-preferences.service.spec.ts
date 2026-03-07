@@ -11,8 +11,10 @@ describe('AvailabilityPreferencesService', () => {
     availabilityPreference: {
       create: jest.fn(),
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
       delete: jest.fn(),
       count: jest.fn(),
     },
@@ -64,10 +66,7 @@ describe('AvailabilityPreferencesService', () => {
       const ownerType = 'DOCTOR';
 
       mockPrismaService.availabilityPreference.count.mockResolvedValue(2);
-      mockPrismaService.availabilityPreference.findMany.mockResolvedValue([
-        { id: 'pref-1', isDefault: false },
-      ]);
-      mockPrismaService.availabilityPreference.update.mockResolvedValue({});
+      mockPrismaService.availabilityPreference.updateMany.mockResolvedValue({ count: 0 });
       mockPrismaService.availabilityPreference.create.mockResolvedValue({
         id: 'pref-new',
         ownerId: userId,
@@ -93,10 +92,7 @@ describe('AvailabilityPreferencesService', () => {
     it('should unset other default preferences if isDefault is true', async () => {
       const userId = 'user-123';
       mockPrismaService.availabilityPreference.count.mockResolvedValue(1);
-      mockPrismaService.availabilityPreference.findMany.mockResolvedValue([
-        { id: 'pref-1', isDefault: true },
-      ]);
-      mockPrismaService.availabilityPreference.update.mockResolvedValue({});
+      mockPrismaService.availabilityPreference.updateMany.mockResolvedValue({ count: 1 });
       mockPrismaService.availabilityPreference.create.mockResolvedValue({
         id: 'pref-new',
         ...createDto,
@@ -104,8 +100,8 @@ describe('AvailabilityPreferencesService', () => {
 
       await service.create(userId, 'DOCTOR', createDto);
 
-      expect(mockPrismaService.availabilityPreference.update).toHaveBeenCalledWith({
-        where: { id: 'pref-1' },
+      expect(mockPrismaService.availabilityPreference.updateMany).toHaveBeenCalledWith({
+        where: { ownerId: userId, ownerType: 'DOCTOR', isDefault: true },
         data: { isDefault: false },
       });
     });
@@ -146,8 +142,8 @@ describe('AvailabilityPreferencesService', () => {
         { id: 'pref-2', isDefault: true },
       ];
 
-      mockPrismaService.availabilityPreference.findUnique.mockResolvedValue(mockPreference);
-      mockPrismaService.availabilityPreference.findMany.mockResolvedValue(mockOtherPreferences);
+      mockPrismaService.availabilityPreference.findFirst.mockResolvedValue(mockPreference);
+      mockPrismaService.availabilityPreference.updateMany.mockResolvedValue({ count: 1 });
       mockPrismaService.availabilityPreference.update.mockResolvedValue({
         ...mockPreference,
         isDefault: true,
@@ -156,15 +152,16 @@ describe('AvailabilityPreferencesService', () => {
       const result = await service.setDefault(preferenceId, userId);
 
       expect(result.isDefault).toBe(true);
-      expect(mockPrismaService.availabilityPreference.update).toHaveBeenCalledTimes(2);
+      expect(mockPrismaService.availabilityPreference.updateMany).toHaveBeenCalledTimes(1);
+      expect(mockPrismaService.availabilityPreference.update).toHaveBeenCalledTimes(1);
     });
 
     it('should throw error if preference not found', async () => {
-      mockPrismaService.availabilityPreference.findUnique.mockResolvedValue(null);
+      mockPrismaService.availabilityPreference.findFirst.mockResolvedValue(null);
 
       await expect(
         service.setDefault('nonexistent', 'user-123'),
-      ).rejects.toThrow('Préférence non trouvée');
+      ).rejects.toThrow('Preference not found');
     });
   });
 
@@ -197,13 +194,13 @@ describe('AvailabilityPreferencesService', () => {
 
       const mockRule = {
         id: 'rule-1',
+        ...mockPreference,
+        ...applyDto,
         ownerId: userId,
         ownerType: 'DOCTOR',
-        ...applyDto,
-        ...mockPreference,
       };
 
-      mockPrismaService.availabilityPreference.findUnique.mockResolvedValue(mockPreference);
+      mockPrismaService.availabilityPreference.findFirst.mockResolvedValue(mockPreference);
       mockPrismaService.availabilityRule.create.mockResolvedValue(mockRule);
 
       const result = await service.applyPreference(preferenceId, userId, applyDto);
@@ -221,14 +218,14 @@ describe('AvailabilityPreferencesService', () => {
     });
 
     it('should throw error if preference not found', async () => {
-      mockPrismaService.availabilityPreference.findUnique.mockResolvedValue(null);
+      mockPrismaService.availabilityPreference.findFirst.mockResolvedValue(null);
 
       await expect(
         service.applyPreference('nonexistent', 'user-123', {
           startDate: '2024-01-01',
           endDate: '2024-12-31',
         }),
-      ).rejects.toThrow('Préférence non trouvée');
+      ).rejects.toThrow('Preference not found');
     });
   });
 
@@ -242,7 +239,7 @@ describe('AvailabilityPreferencesService', () => {
         ownerId: userId,
       };
 
-      mockPrismaService.availabilityPreference.findUnique.mockResolvedValue(mockPreference);
+      mockPrismaService.availabilityPreference.findFirst.mockResolvedValue(mockPreference);
       mockPrismaService.availabilityPreference.delete.mockResolvedValue(mockPreference);
 
       const result = await service.remove(preferenceId, userId);
@@ -254,24 +251,20 @@ describe('AvailabilityPreferencesService', () => {
     });
 
     it('should throw error if preference not found', async () => {
-      mockPrismaService.availabilityPreference.findUnique.mockResolvedValue(null);
+      mockPrismaService.availabilityPreference.findFirst.mockResolvedValue(null);
 
       await expect(
         service.remove('nonexistent', 'user-123'),
-      ).rejects.toThrow('Préférence non trouvée');
+      ).rejects.toThrow('Preference not found');
     });
 
-    it('should throw error if user does not own the preference', async () => {
-      const mockPreference = {
-        id: 'pref-1',
-        ownerId: 'other-user',
-      };
-
-      mockPrismaService.availabilityPreference.findUnique.mockResolvedValue(mockPreference);
+    it('should throw error if preference not found for this user', async () => {
+      // findFirst with { id, ownerId } returns null when ownerId doesn't match
+      mockPrismaService.availabilityPreference.findFirst.mockResolvedValue(null);
 
       await expect(
         service.remove('pref-1', 'user-123'),
-      ).rejects.toThrow('Vous n\'êtes pas autorisé à supprimer cette préférence');
+      ).rejects.toThrow('Preference not found');
     });
   });
 });

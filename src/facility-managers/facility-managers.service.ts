@@ -53,23 +53,20 @@ export class FacilityManagersService {
   }
 
   async findOne(userId: string) {
-    const manager = await this.prisma.facilityManager.findUnique({
+    return this.prisma.facilityManager.findUnique({
       where: { userId },
       include: {
         user: true,
         facility: true,
       },
     });
-
-    if (!manager) {
-      throw new NotFoundException('Facility manager not found');
-    }
-
-    return manager;
   }
 
   async update(userId: string, dto: UpdateFacilityManagerDto) {
     const manager = await this.findOne(userId);
+    if (!manager) {
+      throw new NotFoundException('Facility manager not found');
+    }
 
     return this.prisma.facilityManager.update({
       where: { id: manager.id },
@@ -161,7 +158,7 @@ export class FacilityManagersService {
     });
 
     if (!manager) {
-      throw new NotFoundException('Facility manager not found');
+      return [];
     }
 
     // Docteurs de la structure

@@ -66,6 +66,13 @@ export class AvailabilityPreferencesService {
     });
   }
 
+  async findAll(ownerId: string) {
+    return this.prisma.availabilityPreference.findMany({
+      where: { ownerId },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+    });
+  }
+
   async findOne(id: string, ownerId: string) {
     const preference = await this.prisma.availabilityPreference.findFirst({
       where: { id, ownerId },

@@ -319,6 +319,33 @@ export class AdminController {
     return this.adminService.getDoctorStats();
   }
 
+  // ─── Facility Managers ────────────────────────────────────────────────────
+
+  @Get('facility-managers/:userId')
+  async getFacilityManagerProfile(@Req() req, @Param('userId') userId: string) {
+    requireAdminAccess(req.user);
+    return this.adminService.getFacilityManagerProfile(userId);
+  }
+
+  @Post('facility-managers')
+  async createFacilityManagerProfile(
+    @Req() req,
+    @Body() body: { userId: string; facilityId: string; managedDoctorIds?: string[] },
+  ) {
+    requireAdminWrite(req.user);
+    return this.adminService.createFacilityManagerProfile(body);
+  }
+
+  @Patch('facility-managers/:userId')
+  async updateFacilityManagerProfile(
+    @Req() req,
+    @Param('userId') userId: string,
+    @Body() body: { facilityId?: string; managedDoctorIds?: string[] },
+  ) {
+    requireAdminWrite(req.user);
+    return this.adminService.updateFacilityManagerProfile(userId, body);
+  }
+
   // ─── Finances ─────────────────────────────────────────────────────────────
 
   @Get('finances/wallets')

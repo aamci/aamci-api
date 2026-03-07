@@ -15,6 +15,10 @@ describe('FacilityManagersService', () => {
     },
     user: {
       findMany: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    facility: {
+      findUnique: jest.fn(),
     },
   };
 
@@ -52,6 +56,9 @@ describe('FacilityManagersService', () => {
         updatedAt: new Date(),
       };
 
+      mockPrismaService.user.findUnique.mockResolvedValue({ id: createDto.userId, role: 'FACILITY_MANAGER' });
+      mockPrismaService.facility.findUnique.mockResolvedValue({ id: createDto.facilityId });
+      mockPrismaService.facilityManager.findUnique.mockResolvedValue(null);
       mockPrismaService.facilityManager.create.mockResolvedValue(mockResult);
 
       const result = await service.create(createDto);
@@ -103,7 +110,6 @@ describe('FacilityManagersService', () => {
       mockPrismaService.facilityManager.findUnique.mockResolvedValue(null);
 
       const result = await service.findOne('nonexistent-user');
-
       expect(result).toBeNull();
     });
   });
@@ -155,7 +161,6 @@ describe('FacilityManagersService', () => {
       mockPrismaService.facilityManager.findUnique.mockResolvedValue(null);
 
       const result = await service.getManagedDoctors('nonexistent-user');
-
       expect(result).toEqual([]);
     });
   });
@@ -234,6 +239,7 @@ describe('FacilityManagersService', () => {
       };
 
       mockPrismaService.facilityManager.findUnique.mockResolvedValue(mockManager);
+      mockPrismaService.user.findUnique.mockResolvedValue({ id: doctorId, role: 'DOCTOR' });
       mockPrismaService.facilityManager.update.mockResolvedValue(mockUpdated);
 
       const result = await service.assignDoctor(managerId, doctorId);
@@ -252,6 +258,7 @@ describe('FacilityManagersService', () => {
       };
 
       mockPrismaService.facilityManager.findUnique.mockResolvedValue(mockManager);
+      mockPrismaService.user.findUnique.mockResolvedValue({ id: doctorId, role: 'DOCTOR' });
       mockPrismaService.facilityManager.update.mockResolvedValue(mockManager);
 
       const result = await service.assignDoctor(managerId, doctorId);
