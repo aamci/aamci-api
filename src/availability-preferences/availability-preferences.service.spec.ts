@@ -193,9 +193,9 @@ describe('AvailabilityPreferencesService', () => {
       };
 
       const mockRule = {
-        id: 'rule-1',
         ...mockPreference,
         ...applyDto,
+        id: 'rule-1',
         ownerId: userId,
         ownerType: 'DOCTOR',
       };
