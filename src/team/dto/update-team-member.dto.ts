@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsArray, IsBoolean } from 'class-validator';
 import { TeamRole } from './create-team-member.dto';
 
 export enum TeamMemberStatus {
@@ -29,4 +29,8 @@ export class UpdateTeamMemberDto {
   @IsArray()
   @IsString({ each: true })
   permissions?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  isManager?: boolean;
 }

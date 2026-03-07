@@ -42,6 +42,13 @@ export class FacilityManagersController {
     return this.facilityManagersService.getManagedDoctors(userId);
   }
 
+  @Get('me/finances')
+  @Roles('FACILITY_MANAGER')
+  getFinances(@Req() req: any) {
+    const userId = req.user?.userId || req.user?.sub;
+    return this.facilityManagersService.getFacilityFinances(userId);
+  }
+
   @Get(':userId')
   @Roles('ADMIN')
   findOne(@Param('userId') userId: string) {

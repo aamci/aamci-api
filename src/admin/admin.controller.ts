@@ -319,11 +319,82 @@ export class AdminController {
     return this.adminService.getDoctorStats();
   }
 
+  // ─── Finances ─────────────────────────────────────────────────────────────
+
+  @Get('finances/wallets')
+  async getWallets(
+    @Req() req,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+  ) {
+    requireAdminAccess(req.user);
+    return this.adminService.getWallets({
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+      search,
+    });
+  }
+
+  @Get('finances/wallets/:doctorId')
+  async getDoctorWallet(@Req() req, @Param('doctorId') doctorId: string) {
+    requireAdminAccess(req.user);
+    return this.adminService.getDoctorWallet(doctorId);
+  }
+
+  @Patch('finances/transactions/:id')
+  async updateTransaction(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() body: { status?: string; description?: string },
+  ) {
+    requireAdminWrite(req.user);
+    return this.adminService.updateTransaction(id, body);
+  }
+
+  @Post('finances/transactions')
+  async createTransaction(
+    @Req() req,
+    @Body() body: { doctorId: string; type: string; amount: number; description: string; provider?: string },
+  ) {
+    requireAdminWrite(req.user);
+    return this.adminService.createTransaction(body);
+  }
+
   // ─── Encryption ───────────────────────────────────────────────────────────
 
   @Get('encryption/status')
   async getEncryptionStatus(@Req() req) {
     requireAdminAccess(req.user);
     return this.adminService.getEncryptionStatus();
+  }
+
+  // ─── Team Members ─────────────────────────────────────────────────────────
+
+  @Get('team')
+  async getTeamMembers(
+    @Req() req,
+    @Query('userId') userId?: string,
+    @Query('ownerId') ownerId?: string,
+    @Query('search') search?: string,
+  ) {
+    requireAdminAccess(req.user);
+    return this.adminService.getTeamMembers({ userId, ownerId, search });
+  }
+
+  @Get('team/:id')
+  async getTeamMember(@Req() req, @Param('id') id: string) {
+    requireAdminAccess(req.user);
+    return this.adminService.getTeamMemberById(id);
+  }
+
+  @Patch('team/:id')
+  async updateTeamMember(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() body: { role?: string; isManager?: boolean; status?: string; permissions?: string[] },
+  ) {
+    requireAdminWrite(req.user);
+    return this.adminService.updateTeamMember(id, body);
   }
 }

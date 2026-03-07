@@ -191,6 +191,100 @@ export class FacilityManagersService {
     });
   }
 
+  async getFacilityFinances(managerId: string) {
+    const doctors = await this.getManagedDoctors(managerId);
+    const doctorIds = doctors.map((d) => d.id);
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+    // Wallets (balance only — Wallet model has no totalEarned/totalWithdrawn)
+    const wallets = await this.prisma.wallet.findMany({
+      where: { doctorId: { in: doctorIds } },
+      select: { doctorId: true, balance: true },
+    });
+
+    // Compute totalEarned / totalWithdrawn from Transaction
+    const [paymentAgg, payoutAgg] = await Promise.all([
+      this.prisma.transaction.groupBy({
+        by: ['doctorId'],
+        where: { doctorId: { in: doctorIds }, type: 'PAYMENT', status: 'SUCCESS' },
+        _sum: { amount: true },
+      }),
+      this.prisma.transaction.groupBy({
+        by: ['doctorId'],
+        where: { doctorId: { in: doctorIds }, type: 'PAYOUT', status: 'SUCCESS' },
+        _sum: { amount: true },
+      }),
+    ]);
+    const paymentMap = new Map(paymentAgg.map((p) => [p.doctorId, Number(p._sum.amount ?? 0)]));
+    const payoutMap = new Map(payoutAgg.map((p) => [p.doctorId, Number(p._sum.amount ?? 0)]));
+
+    // Appointments via slot.ownerId (Appointment has no doctorId directly)
+    const [apptThisMonth, apptLastMonth] = await Promise.all([
+      this.prisma.appointment.findMany({
+        where: {
+          slot: { ownerId: { in: doctorIds }, ownerType: 'DOCTOR' },
+          status: 'COMPLETED' as any,
+          createdAt: { gte: startOfMonth },
+        },
+        select: { slot: { select: { ownerId: true } } },
+      }),
+      this.prisma.appointment.findMany({
+        where: {
+          slot: { ownerId: { in: doctorIds }, ownerType: 'DOCTOR' },
+          status: 'COMPLETED' as any,
+          createdAt: { gte: startOfLastMonth, lte: endOfLastMonth },
+        },
+        select: { slot: { select: { ownerId: true } } },
+      }),
+    ]);
+
+    const thisMonthMap = new Map<string, number>();
+    for (const a of apptThisMonth) {
+      const did = a.slot.ownerId;
+      thisMonthMap.set(did, (thisMonthMap.get(did) ?? 0) + 1);
+    }
+    const lastMonthMap = new Map<string, number>();
+    for (const a of apptLastMonth) {
+      const did = a.slot.ownerId;
+      lastMonthMap.set(did, (lastMonthMap.get(did) ?? 0) + 1);
+    }
+
+    const walletMap = new Map(wallets.map((w) => [w.doctorId, w]));
+
+    const perDoctor = doctors.map((d) => {
+      const wallet = walletMap.get(d.id);
+      return {
+        id: d.id,
+        fullName: d.fullName,
+        email: d.email,
+        avatarUrl: (d as any).avatarUrl,
+        specialty: (d as any).doctorProfile?.specialty,
+        balance: Number(wallet?.balance ?? 0),
+        totalEarned: paymentMap.get(d.id) ?? 0,
+        totalWithdrawn: payoutMap.get(d.id) ?? 0,
+        appointmentsThisMonth: thisMonthMap.get(d.id) ?? 0,
+        appointmentsLastMonth: lastMonthMap.get(d.id) ?? 0,
+      };
+    });
+
+    const totals = perDoctor.reduce(
+      (acc, d) => ({
+        totalBalance: acc.totalBalance + d.balance,
+        totalEarned: acc.totalEarned + d.totalEarned,
+        totalWithdrawn: acc.totalWithdrawn + d.totalWithdrawn,
+        appointmentsThisMonth: acc.appointmentsThisMonth + d.appointmentsThisMonth,
+        appointmentsLastMonth: acc.appointmentsLastMonth + d.appointmentsLastMonth,
+      }),
+      { totalBalance: 0, totalEarned: 0, totalWithdrawn: 0, appointmentsThisMonth: 0, appointmentsLastMonth: 0 },
+    );
+
+    return { totals, perDoctor };
+  }
+
   async canManageDoctor(managerId: string, doctorId: string): Promise<boolean> {
     const manager = await this.prisma.facilityManager.findUnique({
       where: { userId: managerId },

@@ -1477,6 +1477,9 @@ model TeamMember {
   role        TeamRole
   status      TeamMemberStatus @default(PENDING)
 
+  // Gestionnaire de l'établissement (droits élargis sans changer de rôle)
+  isManager   Boolean  @default(false)
+
   // Permissions (JSON array of permission IDs)
   permissions String[]
 

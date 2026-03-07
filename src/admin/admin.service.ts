@@ -879,4 +879,181 @@ export class AdminService {
         : 'ENCRYPTION_KEY manquante — les données ne sont pas chiffrées',
     };
   }
+
+  // ─── Finances ─────────────────────────────────────────────────────────────
+
+  async getWallets(params: { page?: number; limit?: number; search?: string }) {
+    const page = Math.max(1, params.page ?? 1);
+    const limit = Math.min(100, Math.max(1, params.limit ?? 20));
+    const skip = (page - 1) * limit;
+
+    const where: any = { role: 'DOCTOR' };
+    if (params.search) {
+      where.OR = [
+        { email: { contains: params.search, mode: 'insensitive' } },
+        { fullName: { contains: params.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [doctors, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { fullName: 'asc' },
+        select: { id: true, email: true, fullName: true, isActive: true },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    const doctorIds = doctors.map((d) => d.id);
+
+    const [payments, payouts] = await Promise.all([
+      this.prisma.transaction.groupBy({
+        by: ['doctorId'],
+        where: { doctorId: { in: doctorIds }, type: 'PAYMENT', status: 'SUCCESS' },
+        _sum: { amount: true },
+      }),
+      this.prisma.transaction.groupBy({
+        by: ['doctorId'],
+        where: { doctorId: { in: doctorIds }, type: 'PAYOUT', status: 'SUCCESS' },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const payMap = Object.fromEntries(payments.map((p) => [p.doctorId, Number(p._sum.amount ?? 0)]));
+    const outMap = Object.fromEntries(payouts.map((p) => [p.doctorId, Number(p._sum.amount ?? 0)]));
+
+    const wallets = doctors.map((d) => ({
+      ...d,
+      totalEarned: payMap[d.id] ?? 0,
+      totalWithdrawn: outMap[d.id] ?? 0,
+      balance: (payMap[d.id] ?? 0) - (outMap[d.id] ?? 0),
+    }));
+
+    const grandTotal = {
+      totalEarned: wallets.reduce((s, w) => s + w.totalEarned, 0),
+      totalWithdrawn: wallets.reduce((s, w) => s + w.totalWithdrawn, 0),
+      balance: wallets.reduce((s, w) => s + w.balance, 0),
+    };
+
+    return { wallets, total, page, limit, pages: Math.ceil(total / limit), grandTotal };
+  }
+
+  async getDoctorWallet(doctorId: string) {
+    const doctor = await this.prisma.user.findUnique({
+      where: { id: doctorId },
+      select: { id: true, email: true, fullName: true },
+    });
+    if (!doctor) throw new NotFoundException('Médecin introuvable');
+
+    const [paymentsAgg, payoutsAgg, pendingAgg, transactions] = await Promise.all([
+      this.prisma.transaction.aggregate({ _sum: { amount: true }, where: { doctorId, type: 'PAYMENT', status: 'SUCCESS' } }),
+      this.prisma.transaction.aggregate({ _sum: { amount: true }, where: { doctorId, type: 'PAYOUT', status: 'SUCCESS' } }),
+      this.prisma.transaction.aggregate({ _sum: { amount: true }, where: { doctorId, status: 'PENDING' } }),
+      this.prisma.transaction.findMany({
+        where: { doctorId },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        select: { id: true, amount: true, type: true, status: true, provider: true, providerRef: true, description: true, createdAt: true },
+      }),
+    ]);
+
+    const totalEarned = Number(paymentsAgg._sum.amount ?? 0);
+    const totalWithdrawn = Number(payoutsAgg._sum.amount ?? 0);
+    const pendingAmount = Number(pendingAgg._sum.amount ?? 0);
+
+    return {
+      doctor,
+      summary: { balance: totalEarned - totalWithdrawn, totalEarned, totalWithdrawn, pendingAmount },
+      transactions,
+    };
+  }
+
+  async updateTransaction(id: string, data: { status?: string; description?: string }) {
+    const tx = await this.prisma.transaction.findUnique({ where: { id } });
+    if (!tx) throw new NotFoundException('Transaction introuvable');
+    return this.prisma.transaction.update({
+      where: { id },
+      data: {
+        ...(data.status !== undefined && { status: data.status as any }),
+        ...(data.description !== undefined && { description: data.description }),
+      },
+    });
+  }
+
+  async createTransaction(data: {
+    doctorId: string;
+    type: string;
+    amount: number;
+    description: string;
+    provider?: string;
+  }) {
+    const doctor = await this.prisma.user.findUnique({ where: { id: data.doctorId } });
+    if (!doctor) throw new NotFoundException('Médecin introuvable');
+    return this.prisma.transaction.create({
+      data: {
+        doctorId: data.doctorId,
+        type: data.type as any,
+        amount: data.amount,
+        status: 'SUCCESS',
+        provider: (data.provider ?? 'STRIPE') as any,
+        patientId: data.doctorId, // required field, use doctorId as placeholder for manual entries
+        description: data.description,
+      },
+    });
+  }
+
+  // ─── Team Members ─────────────────────────────────────────────────────────
+
+  async getTeamMembers(params: { userId?: string; ownerId?: string; search?: string }) {
+    const where: any = {};
+    if (params.userId) where.userId = params.userId;
+    if (params.ownerId) where.ownerId = params.ownerId;
+    if (params.search) {
+      where.OR = [
+        { email: { contains: params.search, mode: 'insensitive' } },
+        { fullName: { contains: params.search, mode: 'insensitive' } },
+      ];
+    }
+    const members = await this.prisma.teamMember.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+    // Enrich with owner info
+    const ownerIds = [...new Set(members.map((m) => m.ownerId))];
+    const owners = await this.prisma.user.findMany({
+      where: { id: { in: ownerIds } },
+      select: { id: true, fullName: true, email: true },
+    });
+    const ownerMap = Object.fromEntries(owners.map((o) => [o.id, o]));
+    return members.map((m) => ({ ...m, owner: ownerMap[m.ownerId] ?? null }));
+  }
+
+  async getTeamMemberById(id: string) {
+    const member = await this.prisma.teamMember.findUnique({ where: { id } });
+    if (!member) throw new NotFoundException('Membre introuvable');
+    const owner = await this.prisma.user.findUnique({
+      where: { id: member.ownerId },
+      select: { id: true, fullName: true, email: true },
+    });
+    return { ...member, owner };
+  }
+
+  async updateTeamMember(
+    id: string,
+    data: { role?: string; isManager?: boolean; status?: string; permissions?: string[] },
+  ) {
+    const member = await this.prisma.teamMember.findUnique({ where: { id } });
+    if (!member) throw new NotFoundException('Membre introuvable');
+    return this.prisma.teamMember.update({
+      where: { id },
+      data: {
+        ...(data.role !== undefined && { role: data.role as any }),
+        ...(data.isManager !== undefined && { isManager: data.isManager }),
+        ...(data.status !== undefined && { status: data.status as any }),
+        ...(data.permissions !== undefined && { permissions: data.permissions }),
+      },
+    });
+  }
 }
