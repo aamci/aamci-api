@@ -4,7 +4,8 @@ import { EncryptionService } from './encryption.service';
 import { encryptBeforeWrite, decryptAfterRead, decryptAfterReadWithJobs } from './prisma-encryption.extension';
 
 const WRITE_ACTIONS = new Set(['create', 'update', 'upsert', 'createMany', 'updateMany']);
-const READ_ACTIONS = new Set(['findUnique', 'findFirst', 'findMany', 'findUniqueOrThrow', 'findFirstOrThrow']);
+// READ_ACTIONS includes write operations whose result must also be decrypted
+const READ_ACTIONS = new Set(['findUnique', 'findFirst', 'findMany', 'findUniqueOrThrow', 'findFirstOrThrow', 'create', 'update', 'upsert']);
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit {

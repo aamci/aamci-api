@@ -31,13 +31,15 @@ export class ConsultationsService {
       throw new NotFoundException('Patient non trouvé');
     }
 
+    // Note: `mode` field requires running the SQL migration below in Supabase first:
+    // ALTER TABLE "Consultation" ADD COLUMN IF NOT EXISTS "mode" TEXT DEFAULT 'PRESENTIEL';
+    // Then uncomment: mode: dto.mode || 'PRESENTIEL',
     return this.prisma.consultation.create({
       data: {
         patientId: dto.patientId,
         doctorId,
         appointmentId: dto.appointmentId,
         motif: dto.motif,
-        mode: dto.mode || 'PRESENTIEL',
         status: 'ACTIVE',
         startedAt: new Date(),
       } as any,
