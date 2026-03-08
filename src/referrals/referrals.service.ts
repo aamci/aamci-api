@@ -88,6 +88,7 @@ export class ReferralsService {
   }
 
   async respond(referralId: string, doctorId: string, dto: { status: string; response?: string }) {
+    console.log('[respond] referralId =', referralId, '| doctorId =', doctorId, '| dto.status =', dto.status);
     const referral = await this.prisma.referral.findUnique({
       where: { id: referralId },
       include: {
@@ -96,6 +97,7 @@ export class ReferralsService {
       },
     });
     if (!referral) throw new NotFoundException('Adressage introuvable');
+    console.log('[respond] referral.toDoctorId =', referral.toDoctorId, '| match =', referral.toDoctorId === doctorId);
     if (referral.toDoctorId !== doctorId) throw new ForbiddenException('Non autorisé');
 
     const updated = await this.prisma.referral.update({
@@ -123,18 +125,30 @@ export class ReferralsService {
       });
     } catch { /* non-blocking */ }
 
+    console.log('[respond] updated status in DB:', updated.status);
     return updated;
   }
 
   async getReceivedPatients(doctorId: string) {
-    return this.prisma.referral.findMany({
-      where: { toDoctorId: doctorId, status: 'ACCEPTED' as any },
+    console.log('[getReceivedPatients] doctorId =', doctorId);
+
+    // Debug: tous les referrals vers ce médecin, tous statuts
+    const allReceived = await this.prisma.referral.findMany({
+      where: { toDoctorId: doctorId },
+      select: { id: true, status: true, patientId: true, toDoctorId: true, respondedAt: true },
+    });
+    console.log('[getReceivedPatients] ALL (any status):', JSON.stringify(allReceived));
+
+    const result = await this.prisma.referral.findMany({
+      where: { toDoctorId: doctorId, status: { in: ['ACCEPTED', 'COMPLETED'] as any } },
       include: {
         patient: { select: { id: true, fullName: true, email: true, phone: true, avatarUrl: true, birthdate: true } },
         fromDoctor: { select: { id: true, fullName: true } },
       },
       orderBy: { respondedAt: 'desc' },
     });
+    console.log('[getReceivedPatients] filtered count:', result.length);
+    return result;
   }
 
   async complete(referralId: string, doctorId: string) {
