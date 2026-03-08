@@ -19,6 +19,7 @@ export class ConsultationsService {
       patientId: string;
       appointmentId?: string;
       motif?: string;
+      mode?: string;
     },
   ) {
     // Vérifier que le patient existe
@@ -36,9 +37,10 @@ export class ConsultationsService {
         doctorId,
         appointmentId: dto.appointmentId,
         motif: dto.motif,
+        mode: dto.mode || 'PRESENTIEL',
         status: 'ACTIVE',
         startedAt: new Date(),
-      },
+      } as any,
       include: {
         patient: {
           select: {

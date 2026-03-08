@@ -1696,6 +1696,9 @@ model Consultation {
   doctorId      String
   appointmentId String?
 
+  // Type de consultation
+  mode          String?             @default("PRESENTIEL") // "PRESENTIEL" | "TELECONSULTATION"
+
   // Contenu de la consultation
   motif           String?
   interrogatoire  String?           @db.Text
