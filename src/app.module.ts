@@ -50,6 +50,7 @@ import { AdminModule } from './admin/admin.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { ReferralsModule } from './referrals/referrals.module';
 import { CorrespondencesModule } from './correspondences/correspondences.module';
+import { StorageModule } from './common/storage.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { CorrespondencesModule } from './correspondences/correspondences.module'
         limit: 200, // 200 requests max (normal API usage)
       },
     ]),
+    StorageModule,
     HealthModule,
     UsersModule,
     AuthModule,
