@@ -9,11 +9,13 @@
 #   • Push sur main                            → test + build image + deploy staging
 #   • Tag api/v*.*.*                           → test + build image + deploy production (manuel)
 #
-# Variables à configurer (GitLab → Settings → CI/CD → Variables) :
-#   API_STAGING_DEPLOY_HOOK   URL webhook de re-déploiement staging
-#   API_PROD_DEPLOY_HOOK      URL webhook de re-déploiement production
-#   API_STAGING_URL           URL publique staging
-#   API_PROD_URL              URL publique production
+# Variables CI/CD à configurer (GitLab → Settings → CI/CD → Variables, masked + protected) :
+#   SSH_PRIVATE_KEY   — clé privée pour se connecter au serveur
+#   DEPLOY_HOST       — IP ou hostname du serveur
+#   DEPLOY_USER       — utilisateur SSH (ex : deploy)
+#   DEPLOY_DIR        — /opt/apps/doctor-patient
+#   API_STAGING_URL   — URL publique staging
+#   API_PROD_URL      — URL publique production
 
 stages:
   - test
@@ -28,9 +30,19 @@ stages:
     - corepack prepare pnpm@9 --activate
     - pnpm install --no-frozen-lockfile
 
+# ── SSH helper ────────────────────────────────────────────────────────────────
+
+.ssh-before: &ssh-before
+  - apk add --no-cache openssh-client bash
+  - eval $(ssh-agent -s)
+  - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+  - cat "$SSH_PRIVATE_KEY" > /tmp/id_deploy
+  - echo >> /tmp/id_deploy
+  - chmod 600 /tmp/id_deploy
+  - ssh-add /tmp/id_deploy
+  - ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
 # ── Validation README ─────────────────────────────────────────────────────────
-# Vérifie que tout module ajouté dans package.json est documenté dans README.md.
-# Ce job ne nécessite pas pnpm install — Node.js seul suffit.
 
 validate:readme:api:
   image: node:20-alpine
@@ -71,7 +83,7 @@ build:api:
     - if: $CI_COMMIT_TAG =~ /^api\/v.*/
   before_script:
     - mkdir -p /kaniko/.docker
-    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$(echo -n $CI_REGISTRY_USER:$CI_JOB_TOKEN | base64)\"}}}" > /kaniko/.docker/config.json
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$(echo -n $CI_REGISTRY_USER:$CI_JOB_TOKEN | base64 -w 0)\"}}}" > /kaniko/.docker/config.json
   script:
     - /kaniko/executor
       --context "$CI_PROJECT_DIR"
@@ -85,7 +97,7 @@ build:api:
 
 deploy:api:staging:
   stage: staging
-  image: alpine:latest
+  image: alpine:3.19
   needs: ["build:api"]
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -93,21 +105,20 @@ deploy:api:staging:
     name: api/staging
     url: $API_STAGING_URL
   before_script:
-    - apk add --no-cache curl
+    - *ssh-before
   script:
     - |
-      if [ -n "$API_STAGING_DEPLOY_HOOK" ]; then
-        curl -f -s -X POST "$API_STAGING_DEPLOY_HOOK"
-        echo "Deploy staging déclenché."
-      else
-        echo "API_STAGING_DEPLOY_HOOK non définie — deploy ignoré."
-      fi
+      ssh "$DEPLOY_USER@$DEPLOY_HOST" \
+        "REGISTRY=$CI_REGISTRY \
+         REGISTRY_USER=$CI_REGISTRY_USER \
+         REGISTRY_PASSWORD=$CI_JOB_TOKEN \
+         bash $DEPLOY_DIR/infra/scripts/deploy.sh api $CI_COMMIT_SHORT_SHA"
 
 # ── Deploy production ─────────────────────────────────────────────────────────
 
 deploy:api:production:
   stage: production
-  image: alpine:latest
+  image: alpine:3.19
   needs: ["build:api"]
   when: manual
   rules:
@@ -117,12 +128,11 @@ deploy:api:production:
     name: api/production
     url: $API_PROD_URL
   before_script:
-    - apk add --no-cache curl
+    - *ssh-before
   script:
     - |
-      if [ -n "$API_PROD_DEPLOY_HOOK" ]; then
-        curl -f -s -X POST "$API_PROD_DEPLOY_HOOK"
-        echo "Deploy production déclenché."
-      else
-        echo "API_PROD_DEPLOY_HOOK non définie — deploy ignoré."
-      fi
+      ssh "$DEPLOY_USER@$DEPLOY_HOST" \
+        "REGISTRY=$CI_REGISTRY \
+         REGISTRY_USER=$CI_REGISTRY_USER \
+         REGISTRY_PASSWORD=$CI_JOB_TOKEN \
+         bash $DEPLOY_DIR/infra/scripts/deploy.sh api $CI_COMMIT_TAG"
