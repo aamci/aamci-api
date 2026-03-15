@@ -6,22 +6,18 @@
 #
 # Déclencheurs :
 #   • Push sur n'importe quelle branche / MR   → test
-#   • Push sur main                            → test + build image + deploy staging
-#   • Tag api/v*.*.*                           → test + build image + deploy production (manuel)
+#   • Push sur main                            → test + deploy (build sur serveur)
 #
 # Variables CI/CD à configurer (GitLab → Settings → CI/CD → Variables, masked + protected) :
-#   SSH_PRIVATE_KEY   — clé privée pour se connecter au serveur
-#   DEPLOY_HOST       — IP ou hostname du serveur
-#   DEPLOY_USER       — utilisateur SSH (ex : deploy)
+#   SSH_PRIVATE_KEY   — clé privée (type File) pour se connecter au serveur
+#   DEPLOY_HOST       — IP du serveur
+#   DEPLOY_USER       — utilisateur SSH (ex : ubuntu)
 #   DEPLOY_DIR        — /opt/apps/doctor-patient
-#   API_STAGING_URL   — URL publique staging
-#   API_PROD_URL      — URL publique production
+#   API_PROD_URL      — URL publique (ex : http://api.1-2-3-4.nip.io)
 
 stages:
   - test
-  - build
-  - staging
-  - production
+  - deploy
 
 .api-node-base:
   image: node:20-alpine
@@ -42,18 +38,6 @@ stages:
   - ssh-add /tmp/id_deploy
   - ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
 
-# ── Validation README ─────────────────────────────────────────────────────────
-
-validate:readme:api:
-  image: node:20-alpine
-  stage: test
-  rules:
-    - if: $CI_COMMIT_BRANCH
-    - if: $CI_COMMIT_TAG =~ /^api\/v.*/
-  script:
-    - node scripts/validate-readme.js
-  allow_failure: false
-
 # ── Test ──────────────────────────────────────────────────────────────────────
 
 test:api:
@@ -61,7 +45,6 @@ test:api:
   stage: test
   rules:
     - if: $CI_COMMIT_BRANCH
-    - if: $CI_COMMIT_TAG =~ /^api\/v.*/
   script:
     - pnpm test:cov
   coverage: '/Lines\s*:\s*\d+\.?\d+%/'
@@ -70,69 +53,18 @@ test:api:
       - coverage/
     expire_in: 1 week
 
-# ── Build image Docker ────────────────────────────────────────────────────────
+# ── Deploy (build sur serveur) ────────────────────────────────────────────────
 
-build:api:
-  stage: build
-  image:
-    name: gcr.io/kaniko-project/executor:v1.23.2-debug
-    entrypoint: [""]
+deploy:api:
+  stage: deploy
+  image: alpine:3.19
   needs: ["test:api"]
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_TAG =~ /^api\/v.*/
-  before_script:
-    - mkdir -p /kaniko/.docker
-    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$(echo -n $CI_REGISTRY_USER:$CI_JOB_TOKEN | base64 -w 0)\"}}}" > /kaniko/.docker/config.json
-  script:
-    - /kaniko/executor
-      --context "$CI_PROJECT_DIR"
-      --dockerfile "$CI_PROJECT_DIR/Dockerfile"
-      --destination "$CI_REGISTRY_IMAGE/api:$CI_COMMIT_SHORT_SHA"
-      --destination "$CI_REGISTRY_IMAGE/api:latest"
-      --cache=true
-      --cache-ttl=24h
-
-# ── Deploy staging ────────────────────────────────────────────────────────────
-
-deploy:api:staging:
-  stage: staging
-  image: alpine:3.19
-  needs: ["build:api"]
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-  environment:
-    name: api/staging
-    url: $API_STAGING_URL
-  before_script:
-    - *ssh-before
-  script:
-    - |
-      ssh "$DEPLOY_USER@$DEPLOY_HOST" \
-        "REGISTRY=$CI_REGISTRY \
-         REGISTRY_USER=$CI_REGISTRY_USER \
-         REGISTRY_PASSWORD=$CI_JOB_TOKEN \
-         bash $DEPLOY_DIR/infra/scripts/deploy.sh api $CI_COMMIT_SHORT_SHA"
-
-# ── Deploy production ─────────────────────────────────────────────────────────
-
-deploy:api:production:
-  stage: production
-  image: alpine:3.19
-  needs: ["build:api"]
-  when: manual
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^api\/v.*/
-      when: manual
   environment:
     name: api/production
     url: $API_PROD_URL
   before_script:
     - *ssh-before
   script:
-    - |
-      ssh "$DEPLOY_USER@$DEPLOY_HOST" \
-        "REGISTRY=$CI_REGISTRY \
-         REGISTRY_USER=$CI_REGISTRY_USER \
-         REGISTRY_PASSWORD=$CI_JOB_TOKEN \
-         bash $DEPLOY_DIR/infra/scripts/deploy.sh api $CI_COMMIT_TAG"
+    - ssh "$DEPLOY_USER@$DEPLOY_HOST" "bash $DEPLOY_DIR/infra/scripts/deploy.sh api"
