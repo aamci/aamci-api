@@ -15,10 +15,13 @@ async function bootstrap() {
   'https://web-doctor-p93i.onrender.com',
   'https://web-patient.onrender.com',
   'https://web-admin-bmdi.onrender.com',
-  // Production nip.io
+  // Production nip.io (points et tirets)
   'http://patient.83.228.225.92.nip.io',
   'http://pro.83.228.225.92.nip.io',
   'http://admin.83.228.225.92.nip.io',
+  'http://patient.83-228-225-92.nip.io',
+  'http://pro.83-228-225-92.nip.io',
+  'http://admin.83-228-225-92.nip.io',
 ];
 
   app.useWebSocketAdapter(new IoAdapter(app));
