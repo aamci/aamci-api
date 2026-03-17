@@ -112,6 +112,7 @@ async function main() {
   console.log('👥 Création des patients...');
 
   const patients: any[] = [];
+  let patientCounter = 1;
   const patientNames = [
     { fullName: 'Marie Dubois', email: 'marie.dubois@email.fr', city: 'Paris', sex: 'F', birthdate: new Date('1985-03-15') },
     { fullName: 'Jean Martin', email: 'jean.martin@email.fr', city: 'Lyon', sex: 'M', birthdate: new Date('1978-07-22') },
@@ -158,7 +159,7 @@ async function main() {
         bloodGroup: ['A+', 'B+', 'AB+', 'O+', 'A-', 'B-', 'AB-', 'O-'][Math.floor(Math.random() * 8)],
         heightCm: 160 + Math.floor(Math.random() * 30),
         weightKg: 55 + Math.floor(Math.random() * 40),
-        patientCode: `PAT-${user.id.substring(0, 8).toUpperCase()}`,
+        patientCode: `PAT-${String(patientCounter++).padStart(4, '0')}`,
       },
     });
 
