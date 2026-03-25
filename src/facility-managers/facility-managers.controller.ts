@@ -49,6 +49,20 @@ export class FacilityManagersController {
     return this.facilityManagersService.getFacilityFinances(userId);
   }
 
+  @Get('my-facility')
+  @Roles('FACILITY_MANAGER')
+  getMyFacility(@Req() req: any) {
+    const userId = req.user?.userId || req.user?.sub;
+    return this.facilityManagersService.getMyFacility(userId);
+  }
+
+  @Patch('my-facility')
+  @Roles('FACILITY_MANAGER')
+  updateMyFacility(@Req() req: any, @Body() body: any) {
+    const userId = req.user?.userId || req.user?.sub;
+    return this.facilityManagersService.updateMyFacility(userId, body);
+  }
+
   @Get(':userId')
   @Roles('ADMIN')
   findOne(@Param('userId') userId: string) {

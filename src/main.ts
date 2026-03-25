@@ -16,12 +16,19 @@ async function bootstrap() {
   'https://web-patient.onrender.com',
   'https://web-admin-bmdi.onrender.com',
   // Production nip.io (points et tirets)
-  'http://patient.83.228.225.92.nip.io',
-  'http://pro.83.228.225.92.nip.io',
-  'http://admin.83.228.225.92.nip.io',
-  'http://patient.83-228-225-92.nip.io',
-  'http://pro.83-228-225-92.nip.io',
-  'http://admin.83-228-225-92.nip.io',
+  'http://patient.141.253.108.57.nip.io',
+  'http://pro.141.253.108.57.nip.io',
+  'http://admin.141.253.108.57.nip.io',
+  'http://patient.141.253.108.57.nip.io',
+  'http://pro.141.253.108.57.nip.io',
+  'http://admin.141.253.108.57.nip.io',
+  // Preprod nip.io
+  'http://preprod-patient.141.253.108.57.nip.io',
+  'http://preprod-pro.141.253.108.57.nip.io',
+  'http://preprod-admin.141.253.108.57.nip.io',
+  'http://preprod-patient.141.253.108.57.nip.io',
+  'http://preprod-pro.141.253.108.57.nip.io',
+  'http://preprod-admin.141.253.108.57.nip.io',
 ];
 
   app.useWebSocketAdapter(new IoAdapter(app));

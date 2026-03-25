@@ -282,6 +282,32 @@ export class FacilityManagersService {
     return { totals, perDoctor };
   }
 
+  async getMyFacility(userId: string) {
+    const manager = await this.prisma.facilityManager.findUnique({
+      where: { userId },
+      include: { facility: true },
+    });
+    if (!manager) throw new NotFoundException('Facility manager not found');
+    return manager.facility;
+  }
+
+  async updateMyFacility(userId: string, data: any) {
+    const manager = await this.prisma.facilityManager.findUnique({
+      where: { userId },
+    });
+    if (!manager) throw new NotFoundException('Facility manager not found');
+
+    const updateData: any = { ...data };
+    if (Array.isArray(data.services)) {
+      updateData.services = JSON.stringify(data.services);
+    }
+
+    return this.prisma.facility.update({
+      where: { id: manager.facilityId },
+      data: updateData,
+    });
+  }
+
   async canManageDoctor(managerId: string, doctorId: string): Promise<boolean> {
     const manager = await this.prisma.facilityManager.findUnique({
       where: { userId: managerId },

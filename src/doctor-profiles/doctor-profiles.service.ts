@@ -6,7 +6,10 @@ export class DoctorProfilesService {
   constructor(private prisma: PrismaService) {}
 
   async getMine(userId: string) {
-    const prof = await this.prisma.doctorProfile.findUnique({ where: { userId } });
+    const prof = await this.prisma.doctorProfile.findUnique({
+      where: { userId },
+      include: { facilities: true },
+    });
     if (!prof) throw new NotFoundException('Doctor profile not found');
     return prof;
   }

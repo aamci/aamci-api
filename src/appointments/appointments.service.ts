@@ -58,29 +58,53 @@ export class AppointmentsService {
   // patient ou doctor selon le rôle
   async findForUser(userId: string, role: string) {
     if (role === 'DOCTOR' || role === 'HOSPITAL') {
-      // tous les rendez-vous sur SES créneaux
       return this.prisma.appointment.findMany({
-        where: {
-          slot: {
-            ownerId: userId,
-          },
-        },
+        where: { slot: { ownerId: userId } },
         orderBy: { createdAt: 'desc' },
         include: {
           patient: { select: PATIENT_SELECT },
           slot: true,
+          kind: true,
         },
       });
     }
 
-    // sinon c'est un patient
+    if (role === 'SECRETARY') {
+      // Trouver tous les médecins employeurs actifs de cette secrétaire
+      const memberships = await this.prisma.teamMember.findMany({
+        where: { userId, status: 'ACTIVE' },
+        select: { ownerId: true },
+      });
+      const doctorIds = memberships.map(m => m.ownerId);
+      if (doctorIds.length === 0) return [];
+      return this.prisma.appointment.findMany({
+        where: { slot: { ownerId: { in: doctorIds }, ownerType: 'DOCTOR' } },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          patient: { select: PATIENT_SELECT },
+          slot: true,
+          kind: true,
+        },
+      });
+    }
+
+    // Patient
     return this.prisma.appointment.findMany({
       where: { patientId: userId },
       orderBy: { createdAt: 'desc' },
       include: {
         slot: true,
+        kind: true,
       },
     });
+  }
+
+  // Vérifie si une secrétaire est autorisée à gérer un appointment donné
+  private async secretaryCanManage(secretaryId: string, doctorId: string): Promise<boolean> {
+    const membership = await this.prisma.teamMember.findFirst({
+      where: { userId: secretaryId, ownerId: doctorId, status: 'ACTIVE' },
+    });
+    return !!membership;
   }
 
   // créer côté patient
@@ -268,22 +292,23 @@ export class AppointmentsService {
     return appointment;
   }
 
-  // ✅ DOCTOR / HOSPITAL change le statut d'un RDV qui est sur son slot
-  async updateStatusAsOwner(appointmentId: string, requesterId: string, status: AppointmentStatus) {
+  // ✅ DOCTOR / HOSPITAL / SECRETARY change le statut d'un RDV sur le slot du médecin
+  async updateStatusAsOwner(appointmentId: string, requesterId: string, status: AppointmentStatus, role?: string) {
     const appt = await this.prisma.appointment.findUnique({
       where: { id: appointmentId },
       include: {
         slot: {
-          include: {
-            appointments: true,
-          },
+          include: { appointments: true },
         },
       },
     });
     if (!appt) throw new NotFoundException('Rendez-vous introuvable');
 
-    // contrôle de propriété : le créneau doit appartenir au médecin connecté
-    if (appt.slot.ownerId !== requesterId) {
+    // Contrôle de propriété
+    const isOwner = appt.slot.ownerId === requesterId;
+    const isSecretary = role === 'SECRETARY' && await this.secretaryCanManage(requesterId, appt.slot.ownerId);
+
+    if (!isOwner && !isSecretary) {
       throw new ForbiddenException('Vous ne pouvez modifier que les rendez-vous de vos créneaux.');
     }
 

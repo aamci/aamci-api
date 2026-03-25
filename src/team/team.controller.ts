@@ -30,6 +30,12 @@ export class TeamController {
     return this.teamService.getTeamStats(req.user.userId);
   }
 
+  // For SECRETARY: returns the teams they belong to + employer doctor info
+  @Get('my-membership')
+  getMyMembership(@Request() req) {
+    return this.teamService.getMyMembership(req.user.userId);
+  }
+
   @Get(':id')
   getTeamMember(@Request() req, @Param('id') id: string) {
     return this.teamService.getTeamMember(req.user.userId, id);

@@ -18,7 +18,7 @@ export class UsersController {
     birthPlace?: string;
     birthName?: string;
   }) {
-    const doctorId = req.user.userId;
+    const doctorId = await this.users.resolveDoctorId(req.user.userId, req.user.role);
 
     if (!dto.fullName || !dto.email) {
       throw new BadRequestException('Le nom complet et l\'email sont requis');
@@ -75,25 +75,25 @@ export class UsersController {
 
   @Get('patients')
   async getMyPatients(@Req() req) {
-    const doctorId = req.user.userId;
+    const doctorId = await this.users.resolveDoctorId(req.user.userId, req.user.role);
     return this.users.getDoctorPatients(doctorId);
   }
 
   @Get('patients/search')
   async searchPatients(@Req() req, @Query('q') query: string) {
-    const doctorId = req.user.userId;
     if (!query) {
       throw new BadRequestException('Query parameter "q" is required');
     }
+    const doctorId = await this.users.resolveDoctorId(req.user.userId, req.user.role);
     return this.users.searchDoctorPatients(doctorId, query);
   }
 
   @Get('patients/:id')
   async getPatientDetails(@Req() req, @Param('id') patientId: string) {
-    const doctorId = req.user.userId;
     if (!patientId) {
       throw new BadRequestException('Patient ID is required');
     }
+    const doctorId = await this.users.resolveDoctorId(req.user.userId, req.user.role);
     return this.users.getPatientDetails(patientId, doctorId);
   }
 }

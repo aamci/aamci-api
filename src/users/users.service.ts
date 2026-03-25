@@ -203,6 +203,22 @@ export class UsersService {
   }
 
   /**
+   * Résoudre l'ID du médecin effectif : pour SECRETARY → employer doctor,
+   * pour DOCTOR → userId direct.
+   */
+  async resolveDoctorId(userId: string, role: string): Promise<string> {
+    if (role === 'SECRETARY') {
+      const membership = await this.prisma.teamMember.findFirst({
+        where: { userId, status: 'ACTIVE' },
+        select: { ownerId: true },
+      });
+      if (!membership) throw new Error('Aucun médecin employeur trouvé pour ce secrétaire');
+      return membership.ownerId;
+    }
+    return userId;
+  }
+
+  /**
    * Récupérer tous les patients d'un médecin (basé sur les rendez-vous)
    */
   async getDoctorPatients(doctorId: string) {

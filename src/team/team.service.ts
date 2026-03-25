@@ -6,14 +6,16 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { EmailService } from '../common/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateTeamMemberDto } from './dto/create-team-member.dto';
-import { UpdateTeamMemberDto, TeamMemberStatus } from './dto/update-team-member.dto';
+import { UpdateTeamMemberDto } from './dto/update-team-member.dto';
 
 @Injectable()
 export class TeamService {
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async getTeamMembers(ownerId: string) {
@@ -41,49 +43,113 @@ export class TeamService {
   async inviteTeamMember(ownerId: string, createDto: CreateTeamMemberDto) {
     // Check if email already exists for this owner
     const existing = await this.prisma.teamMember.findUnique({
-      where: {
-        ownerId_email: {
-          ownerId,
-          email: createDto.email,
-        },
-      },
+      where: { ownerId_email: { ownerId, email: createDto.email } },
     });
 
     if (existing) {
       throw new ConflictException('A team member with this email already exists');
     }
 
-    // Create team member invitation
-    const member = await this.prisma.teamMember.create({
-      data: {
-        ownerId,
-        email: createDto.email,
-        fullName: createDto.fullName,
-        phone: createDto.phone,
-        role: createDto.role,
-        permissions: createDto.permissions || [],
-        status: 'PENDING',
-        invitedAt: new Date(),
-      },
-    });
-
-    // Send invitation email
     const inviter = await this.prisma.user.findUnique({
       where: { id: ownerId },
       select: { fullName: true },
     });
+
+    // Check if the invited person already has an account
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: createDto.email },
+    });
+
+    const now = new Date();
+    let member: any;
+
+    if (existingUser) {
+      // User exists — link immediately and activate
+      member = await this.prisma.teamMember.create({
+        data: {
+          ownerId,
+          userId: existingUser.id,
+          email: createDto.email,
+          fullName: createDto.fullName,
+          phone: createDto.phone,
+          role: createDto.role,
+          permissions: createDto.permissions || [],
+          status: 'ACTIVE',
+          invitedAt: now,
+          joinedAt: now,
+          lastActiveAt: now,
+        },
+      });
+
+      // Update user role to SECRETARY
+      await this.prisma.user.update({
+        where: { id: existingUser.id },
+        data: { role: 'SECRETARY' },
+      });
+
+      // Send in-app notification
+      await this.notificationsService.create({
+        userId: existingUser.id,
+        type: 'TEAM_INVITATION',
+        title: 'Vous avez été ajouté à une équipe',
+        message: `${inviter?.fullName || 'Un médecin'} vous a ajouté à son équipe en tant que ${createDto.role.toLowerCase()}.`,
+      });
+    } else {
+      // User doesn't exist yet — create pending invitation
+      member = await this.prisma.teamMember.create({
+        data: {
+          ownerId,
+          email: createDto.email,
+          fullName: createDto.fullName,
+          phone: createDto.phone,
+          role: createDto.role,
+          permissions: createDto.permissions || [],
+          status: 'PENDING',
+          invitedAt: now,
+        },
+      });
+    }
+
+    // Send invitation email (different CTA depending on whether user already exists)
     try {
       await this.emailService.sendTeamInvitation(
         createDto.email,
         inviter?.fullName || 'Un médecin',
         createDto.fullName,
         createDto.role,
+        !!existingUser,
       );
     } catch (error) {
       console.error('Failed to send team invitation email:', error);
     }
 
     return member;
+  }
+
+  // For SECRETARY: returns their membership records with employer doctor info
+  async getMyMembership(userId: string) {
+    const memberships = await this.prisma.teamMember.findMany({
+      where: { userId, status: 'ACTIVE' },
+    });
+
+    const result = await Promise.all(
+      memberships.map(async (m) => {
+        const owner = await this.prisma.user.findUnique({
+          where: { id: m.ownerId },
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            doctorProfile: {
+              select: { specialty: true, city: true },
+            },
+          },
+        });
+        return { ...m, owner };
+      }),
+    );
+
+    return result;
   }
 
   async updateTeamMember(
@@ -159,7 +225,7 @@ export class TeamService {
       throw new BadRequestException('Member is not pending activation');
     }
 
-    return this.prisma.teamMember.update({
+    const updated = await this.prisma.teamMember.update({
       where: { id: member.id },
       data: {
         userId,
@@ -168,17 +234,53 @@ export class TeamService {
         lastActiveAt: new Date(),
       },
     });
+
+    // Notify the new member
+    try {
+      const owner = await this.prisma.user.findUnique({
+        where: { id: ownerId },
+        select: { fullName: true },
+      });
+      await this.notificationsService.create({
+        userId,
+        type: 'TEAM_JOINED',
+        title: 'Bienvenue dans l\'équipe',
+        message: `Vous avez rejoint l'équipe de ${owner?.fullName || 'un médecin'} en tant que ${member.role.toLowerCase()}.`,
+      });
+    } catch (e) {
+      console.error('Failed to send TEAM_JOINED notification:', e);
+    }
+
+    return updated;
   }
 
   async deactivateMember(ownerId: string, memberId: string) {
     const member = await this.getTeamMember(ownerId, memberId);
 
-    return this.prisma.teamMember.update({
+    const updated = await this.prisma.teamMember.update({
       where: { id: member.id },
-      data: {
-        status: 'INACTIVE',
-      },
+      data: { status: 'INACTIVE' },
     });
+
+    // Notify the deactivated member
+    if (member.userId) {
+      try {
+        const owner = await this.prisma.user.findUnique({
+          where: { id: ownerId },
+          select: { fullName: true },
+        });
+        await this.notificationsService.create({
+          userId: member.userId,
+          type: 'TEAM_DEACTIVATED',
+          title: 'Accès retiré',
+          message: `Votre accès à l'équipe de ${owner?.fullName || 'un médecin'} a été désactivé.`,
+        });
+      } catch (e) {
+        console.error('Failed to send TEAM_DEACTIVATED notification:', e);
+      }
+    }
+
+    return updated;
   }
 
   async reactivateMember(ownerId: string, memberId: string) {

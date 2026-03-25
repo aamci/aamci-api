@@ -22,7 +22,8 @@ export class AppointmentsController {
     @Body() dto: { status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'NO_SHOW' | 'COMPLETED' },
   ) {
     const userId = req.user.userId;
-    return this.svc.updateStatusAsOwner(id, userId, dto.status);
+    const role = req.user.role;
+    return this.svc.updateStatusAsOwner(id, userId, dto.status, role);
   }
 
   @Patch(':id/reschedule')
@@ -100,7 +101,7 @@ export class AppointmentsController {
 
     // Si slotStart et slotEnd sont fournis, créer le slot à la volée
     if (dto.slotStart && dto.slotEnd) {
-      // Le doctorId vient du body (patient qui réserve) ou du JWT (médecin qui crée)
+      // DOCTOR → propre userId ; SECRETARY/PATIENT → doctorId du body
       const doctorId = role === 'DOCTOR' ? userId : dto.doctorId;
       return this.svc.createWithNewSlot({
         patientId: dto.patientId || userId,
