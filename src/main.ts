@@ -9,27 +9,29 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
   const origins = [
-  'http://localhost:3000',
-  'http://localhost:53785',
-  'http://localhost:3001',
-  'https://web-doctor-p93i.onrender.com',
-  'https://web-patient.onrender.com',
-  'https://web-admin-bmdi.onrender.com',
-  // Production nip.io (points et tirets)
-  'http://patient.141.253.108.57.nip.io',
-  'http://pro.141.253.108.57.nip.io',
-  'http://admin.141.253.108.57.nip.io',
-  'http://patient.141.253.108.57.nip.io',
-  'http://pro.141.253.108.57.nip.io',
-  'http://admin.141.253.108.57.nip.io',
-  // Preprod nip.io
-  'http://preprod-patient.141.253.108.57.nip.io',
-  'http://preprod-pro.141.253.108.57.nip.io',
-  'http://preprod-admin.141.253.108.57.nip.io',
-  'http://preprod-patient.141.253.108.57.nip.io',
-  'http://preprod-pro.141.253.108.57.nip.io',
-  'http://preprod-admin.141.253.108.57.nip.io',
-];
+    'http://localhost:3000',
+    'http://localhost:53785',
+    'http://localhost:3001',
+    'https://web-doctor-p93i.onrender.com',
+    'https://web-patient.onrender.com',
+    'https://web-admin-bmdi.onrender.com',
+    // Production nip.io — format points
+    'http://patient.141.253.108.57.nip.io',
+    'http://pro.141.253.108.57.nip.io',
+    'http://admin.141.253.108.57.nip.io',
+    // Production nip.io — format tirets
+    'http://patient.141-253-108-57.nip.io',
+    'http://pro.141-253-108-57.nip.io',
+    'http://admin.141-253-108-57.nip.io',
+    // Preprod nip.io — format points
+    'http://preprod-patient.141.253.108.57.nip.io',
+    'http://preprod-pro.141.253.108.57.nip.io',
+    'http://preprod-admin.141.253.108.57.nip.io',
+    // Preprod nip.io — format tirets
+    'http://preprod-patient.141-253-108-57.nip.io',
+    'http://preprod-pro.141-253-108-57.nip.io',
+    'http://preprod-admin.141-253-108-57.nip.io',
+  ];
 
   app.useWebSocketAdapter(new IoAdapter(app));
 
