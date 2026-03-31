@@ -12,13 +12,34 @@ import { Injectable, Logger } from '@nestjs/common';
 @Injectable()
 @WebSocketGateway({
   cors: {
-    origin: [
-      'http://localhost:3001',
-      'http://localhost:3002',
-      'http://localhost:3003',
-      'https://web-patient.onrender.com',
-      'https://web-doctor-p93i.onrender.com',
-    ],
+    origin: (origin: string, cb: (err: Error | null, allow: boolean) => void) => {
+      const allowed = [
+        'http://localhost:3001',
+        'http://localhost:3002',
+        'http://localhost:3003',
+        'https://web-patient.onrender.com',
+        'https://web-doctor-p93i.onrender.com',
+        'https://web-admin-bmdi.onrender.com',
+        // Production nip.io — format points
+        'http://patient.141.253.108.57.nip.io',
+        'http://pro.141.253.108.57.nip.io',
+        'http://admin.141.253.108.57.nip.io',
+        // Production nip.io — format tirets
+        'http://patient.141-253-108-57.nip.io',
+        'http://pro.141-253-108-57.nip.io',
+        'http://admin.141-253-108-57.nip.io',
+        // Preprod nip.io — format points
+        'http://preprod-patient.141.253.108.57.nip.io',
+        'http://preprod-pro.141.253.108.57.nip.io',
+        'http://preprod-admin.141.253.108.57.nip.io',
+        // Preprod nip.io — format tirets
+        'http://preprod-patient.141-253-108-57.nip.io',
+        'http://preprod-pro.141-253-108-57.nip.io',
+        'http://preprod-admin.141-253-108-57.nip.io',
+      ];
+      const isLocalhost = !origin || /^http:\/\/localhost:\d+$/.test(origin);
+      cb(null, isLocalhost || allowed.includes(origin));
+    },
     credentials: true,
   },
   namespace: '/notifications',
