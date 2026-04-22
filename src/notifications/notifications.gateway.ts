@@ -18,11 +18,11 @@ import { Injectable, Logger } from '@nestjs/common';
         'http://localhost:3002',
         'http://localhost:3003',
         // Production ibogha.elowe.fr
-        'https://ibogha.elowe.fr',
+        'https://patient.ibogha.elowe.fr',
         'https://pro.ibogha.elowe.fr',
         'https://admin.ibogha.elowe.fr',
         // Preprod ibogha.elowe.fr
-        'https://preprod.ibogha.elowe.fr',
+        'https://preprod-patient.ibogha.elowe.fr',
         'https://preprod-pro.ibogha.elowe.fr',
         'https://preprod-admin.ibogha.elowe.fr',
       ];
