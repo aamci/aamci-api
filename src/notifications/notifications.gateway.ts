@@ -25,6 +25,10 @@ import { Injectable, Logger } from '@nestjs/common';
         'https://preprod-patient.ibogha.elowe.fr',
         'https://preprod-pro.ibogha.elowe.fr',
         'https://preprod-admin.ibogha.elowe.fr',
+        // Staging nip.io (IP temporaire sans domaine)
+        'https://patient.38.247.138.247.nip.io',
+        'https://pro.38.247.138.247.nip.io',
+        'https://admin.38.247.138.247.nip.io',
       ];
       const isLocalhost = !origin || /^http:\/\/localhost:\d+$/.test(origin);
       cb(null, isLocalhost || allowed.includes(origin));

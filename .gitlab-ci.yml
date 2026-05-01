@@ -7,8 +7,8 @@
 #   DEPLOY_HOST            — IP du serveur
 #   DEPLOY_USER            — ex : ubuntu
 #   DEPLOY_DIR             — /opt/apps/doctor-patient
-#   API_PROD_URL           — http://api.141.253.108.57.nip.io
-#   API_PREPROD_URL        — http://preprod-api.141.253.108.57.nip.io
+#   API_PROD_URL           — http://api.38.247.138.247.nip.io
+#   API_PREPROD_URL        — http://preprod-api.38.247.138.247.nip.io
 
 stages:
   - build
