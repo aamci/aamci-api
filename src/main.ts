@@ -21,9 +21,9 @@ async function bootstrap() {
     'https://preprod-pro.ibogha.elowe.fr',
     'https://preprod-admin.ibogha.elowe.fr',
     // Staging nip.io (IP temporaire sans domaine)
-    'https://patient.38.247.138.247.nip.io',
-    'https://pro.38.247.138.247.nip.io',
-    'https://admin.38.247.138.247.nip.io',
+    'http://patient.38.247.138.247.nip.io',
+    'http://pro.38.247.138.247.nip.io',
+    'http://admin.38.247.138.247.nip.io',
   ];
 
   app.useWebSocketAdapter(new IoAdapter(app));
