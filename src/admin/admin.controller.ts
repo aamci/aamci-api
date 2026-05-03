@@ -424,4 +424,68 @@ export class AdminController {
     requireAdminWrite(req.user);
     return this.adminService.updateTeamMember(id, body);
   }
+
+  // ─── Correspondences ─────────────────────────────────────────────────────
+
+  @Get('correspondences')
+  async getCorrespondences(
+    @Req() req,
+    @Query('category') category?: string,
+    @Query('isRead') isRead?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    requireAdminAccess(req.user);
+    return this.adminService.getCorrespondences({
+      category,
+      isRead,
+      search,
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 20,
+    });
+  }
+
+  @Get('correspondences/:id')
+  async getCorrespondenceById(@Req() req, @Param('id') id: string) {
+    requireAdminAccess(req.user);
+    return this.adminService.getCorrespondenceById(id);
+  }
+
+  // ─── 2FA Admin ───────────────────────────────────────────────────────────
+
+  @Get('2fa/stats')
+  async get2faStats(@Req() req) {
+    requireAdminAccess(req.user);
+    return this.adminService.get2faStats();
+  }
+
+  @Get('2fa/users')
+  async get2faUsers(
+    @Req() req,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('page')   page?: string,
+    @Query('limit')  limit?: string,
+  ) {
+    requireAdminAccess(req.user);
+    return this.adminService.get2faUsers({
+      search,
+      status,
+      page:  page  ? parseInt(page)  : 1,
+      limit: limit ? parseInt(limit) : 20,
+    });
+  }
+
+  @Post('users/:id/2fa/disable')
+  async disable2fa(@Req() req, @Param('id') id: string) {
+    requireAdminWrite(req.user);
+    return this.adminService.disable2faForUser(id);
+  }
+
+  @Post('users/:id/2fa/unlock')
+  async unlock2fa(@Req() req, @Param('id') id: string) {
+    requireAdminWrite(req.user);
+    return this.adminService.unlock2faForUser(id);
+  }
 }

@@ -1947,56 +1947,56 @@ async function main() {
   await prisma.wallet.create({
     data: {
       doctorId: doctor1.id,
-      balance: 2450.50,
+      balance: 1607000,
     },
   });
 
   await prisma.wallet.create({
     data: {
       doctorId: doctor2.id,
-      balance: 1820.00,
+      balance: 1194000,
     },
   });
 
   await prisma.wallet.create({
     data: {
       doctorId: doctor3.id,
-      balance: 3100.75,
+      balance: 2034000,
     },
   });
 
   await prisma.wallet.create({
     data: {
       doctorId: doctor4.id,
-      balance: 1560.25,
+      balance: 1023000,
     },
   });
 
   await prisma.wallet.create({
     data: {
       doctorId: doctor5.id,
-      balance: 2780.00,
+      balance: 1824000,
     },
   });
 
   await prisma.wallet.create({
     data: {
       doctorId: doctor6.id,
-      balance: 1950.50,
+      balance: 1279000,
     },
   });
 
   await prisma.wallet.create({
     data: {
       doctorId: doctor7.id,
-      balance: 2340.75,
+      balance: 1536000,
     },
   });
 
   await prisma.wallet.create({
     data: {
       doctorId: doctor8.id,
-      balance: 1680.00,
+      balance: 1102000,
     },
   });
 

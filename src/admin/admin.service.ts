@@ -1133,4 +1133,120 @@ export class AdminService {
       },
     });
   }
+
+  // ─── Correspondences ──────────────────────────────────────────────────────
+
+  async getCorrespondences(filters: {
+    category?: string;
+    isRead?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const page  = filters.page  || 1;
+    const limit = filters.limit || 20;
+    const skip  = (page - 1) * limit;
+
+    const where: any = {};
+    if (filters.category) where.category = filters.category;
+    if (filters.isRead !== undefined) where.isRead = filters.isRead === 'true';
+    if (filters.search) {
+      where.OR = [
+        { subject: { contains: filters.search, mode: 'insensitive' } },
+        { sender:    { fullName: { contains: filters.search, mode: 'insensitive' } } },
+        { recipient: { fullName: { contains: filters.search, mode: 'insensitive' } } },
+      ];
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.medicalCorrespondence.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          sender:    { select: { id: true, fullName: true, avatarUrl: true, doctorProfile: { select: { specialty: true } } } },
+          recipient: { select: { id: true, fullName: true, avatarUrl: true, doctorProfile: { select: { specialty: true } } } },
+          patient:   { select: { id: true, fullName: true, email: true } },
+        },
+      }),
+      this.prisma.medicalCorrespondence.count({ where }),
+    ]);
+
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async getCorrespondenceById(id: string) {
+    return this.prisma.medicalCorrespondence.findUniqueOrThrow({
+      where: { id },
+      include: {
+        sender:    { select: { id: true, fullName: true, avatarUrl: true, doctorProfile: { select: { specialty: true, city: true } } } },
+        recipient: { select: { id: true, fullName: true, avatarUrl: true, doctorProfile: { select: { specialty: true, city: true } } } },
+        patient:   { select: { id: true, fullName: true, email: true, avatarUrl: true } },
+      },
+    });
+  }
+
+  // ─── 2FA Admin ────────────────────────────────────────────────────────────
+
+  async get2faStats() {
+    const [total, enabled, locked] = await Promise.all([
+      this.prisma.twoFactorAuth.count(),
+      this.prisma.twoFactorAuth.count({ where: { isEnabled: true } }),
+      this.prisma.twoFactorAuth.count({ where: { lockedUntil: { gt: new Date() } } }),
+    ]);
+    const totalUsers = await this.prisma.user.count();
+    return { total, enabled, locked, totalUsers, adoptionRate: totalUsers ? Math.round((enabled / totalUsers) * 100) : 0 };
+  }
+
+  async get2faUsers(filters: { search?: string; status?: string; page?: number; limit?: number }) {
+    const page  = filters.page  || 1;
+    const limit = filters.limit || 20;
+    const skip  = (page - 1) * limit;
+
+    const where: any = { twoFactorAuth: { isNot: null } };
+    if (filters.status === 'enabled')  where.twoFactorAuth = { isEnabled: true };
+    if (filters.status === 'disabled') where.twoFactorAuth = { isEnabled: false };
+    if (filters.status === 'locked')   where.twoFactorAuth = { lockedUntil: { gt: new Date() } };
+    if (filters.search) {
+      where.OR = [
+        { fullName: { contains: filters.search, mode: 'insensitive' } },
+        { email:    { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true, fullName: true, email: true, role: true, avatarUrl: true,
+          twoFactorAuth: {
+            select: { isEnabled: true, lastUsedAt: true, failedAttempts: true, lockedUntil: true, createdAt: true },
+          },
+        },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async disable2faForUser(userId: string) {
+    const tfa = await this.prisma.twoFactorAuth.findUnique({ where: { userId } });
+    if (!tfa) throw new Error('Aucune configuration 2FA trouvée pour cet utilisateur');
+    return this.prisma.twoFactorAuth.update({
+      where: { userId },
+      data: { isEnabled: false, secret: null, backupCodes: [], failedAttempts: 0, lockedUntil: null },
+    });
+  }
+
+  async unlock2faForUser(userId: string) {
+    return this.prisma.twoFactorAuth.update({
+      where: { userId },
+      data: { failedAttempts: 0, lockedUntil: null },
+    });
+  }
 }
