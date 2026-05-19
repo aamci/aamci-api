@@ -14,6 +14,7 @@ stages:
   - build
   - deploy
   - migrate
+  - seed
 
 # ── SSH helper ────────────────────────────────────────────────────────────────
 
@@ -143,6 +144,24 @@ migrate:db:
     paths:
       - /tmp/restore_log.txt
     expire_in: 7 days
+
+# ── Seed DB (manuel) ─────────────────────────────────────────────────────────
+#
+# Déclencher via : GitLab → Pipelines → Run pipeline
+# Le seed utilise dist/prisma/seed.js compilé dans l'image de production.
+# ⚠ Attention : le seed recrée les données de base (idempotent via upsert).
+
+seed:db:
+  stage: seed
+  image: alpine:3.19
+  rules:
+    - when: manual
+      allow_failure: false
+  before_script:
+    - *ssh-before
+  script:
+    - ssh "$DEPLOY_USER@$DEPLOY_HOST"
+      "docker exec health-api-1 node dist/prisma/seed.js"
 
 # ── Backup DB (manuel ou planifié) ───────────────────────────────────────────
 

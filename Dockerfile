@@ -13,6 +13,8 @@ COPY . .
 RUN npx prisma generate
 # Build your Nest app
 RUN npm run build
+# Compile seed script (outputs to dist/prisma/seed.js)
+RUN npx tsc -p tsconfig.seed.json --noEmit false
 
 # ---- runtime ----
 FROM node:20-alpine AS runner
