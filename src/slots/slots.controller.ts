@@ -10,10 +10,14 @@ import {
   Req,
   UseGuards,
   UnauthorizedException,
+  ForbiddenException,
   Query,
 } from '@nestjs/common';
 import { SlotsService } from './slots.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+
+// To re-allow doctors to manage their own slots, add 'DOCTOR' to this array.
+const CALENDAR_WRITE_ROLES = ['FACILITY_MANAGER', 'HOSPITAL'];
 
 @Controller('slots')
 //@UseGuards(JwtAuthGuard)
@@ -66,9 +70,11 @@ export class SlotsController {
   // }
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   async create(@Req() req, @Body() dto: any) {
     const userId = this.getUserId(req);
     if (!userId) throw new UnauthorizedException('Utilisateur non authentifié');
+    if (!CALENDAR_WRITE_ROLES.includes(req.user.role)) throw new ForbiddenException('Seul un gestionnaire peut modifier le calendrier');
 
     return this.slots.create({
       ownerId: userId,
@@ -85,6 +91,7 @@ export class SlotsController {
   async bulkCreate(@Req() req, @Body() body: { slots: Array<{ start: string; end: string; capacity?: number; status?: string }> }) {
     const userId = req.user.userId;
     if (!userId) throw new UnauthorizedException('Utilisateur non authentifié');
+    if (!CALENDAR_WRITE_ROLES.includes(req.user.role)) throw new ForbiddenException('Seul un gestionnaire peut modifier le calendrier');
 
     return this.slots.bulkCreate(userId, body.slots || []);
   }
@@ -94,6 +101,7 @@ export class SlotsController {
   async generateSlots(@Req() req, @Body() body: any) {
     const userId = req.user.userId;
     if (!userId) throw new UnauthorizedException('Utilisateur non authentifié');
+    if (!CALENDAR_WRITE_ROLES.includes(req.user.role)) throw new ForbiddenException('Seul un gestionnaire peut modifier le calendrier');
 
     const {
       days,
@@ -121,16 +129,20 @@ export class SlotsController {
   }
 
   @Put(':id')
+  @UseGuards(JwtAuthGuard)
   async update(@Req() req, @Param('id') id: string, @Body() dto: any) {
     const userId = this.getUserId(req);
     if (!userId) throw new UnauthorizedException();
+    if (!CALENDAR_WRITE_ROLES.includes(req.user.role)) throw new ForbiddenException('Seul un gestionnaire peut modifier le calendrier');
     return this.slots.update(id, userId, dto);
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   async remove(@Req() req, @Param('id') id: string) {
     const userId = this.getUserId(req);
     if (!userId) throw new UnauthorizedException();
+    if (!CALENDAR_WRITE_ROLES.includes(req.user.role)) throw new ForbiddenException('Seul un gestionnaire peut modifier le calendrier');
     return this.slots.remove(id, userId);
   }
 }

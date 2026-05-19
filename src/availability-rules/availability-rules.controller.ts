@@ -18,6 +18,9 @@ import { UpdateAvailabilityRuleDto } from './dto/update-availability-rule.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { FacilityManagersService } from '../facility-managers/facility-managers.service';
 
+// To re-allow doctors to manage their own calendar, add 'DOCTOR' to this array.
+const CALENDAR_WRITE_ROLES = ['FACILITY_MANAGER', 'HOSPITAL'];
+
 @Controller('availability-rules')
 @UseGuards(JwtAuthGuard)
 export class AvailabilityRulesController {
@@ -55,9 +58,6 @@ export class AvailabilityRulesController {
     } else if (req.user.role === 'HOSPITAL') {
       ownerType = 'HOSPITAL';
       targetDoctorId = userId;
-    } else if (req.user.role === 'DOCTOR') {
-      ownerType = 'DOCTOR';
-      targetDoctorId = userId;
     } else {
       throw new ForbiddenException('Invalid role for this operation');
     }
@@ -89,6 +89,7 @@ export class AvailabilityRulesController {
   ) {
     const userId = req.user?.id || req.user?.userId;
     if (!userId) throw new UnauthorizedException('User not authenticated');
+    if (!CALENDAR_WRITE_ROLES.includes(req.user.role)) throw new ForbiddenException('Seul un gestionnaire peut modifier le calendrier');
 
     return this.service.update(id, userId, dto);
   }
@@ -97,6 +98,7 @@ export class AvailabilityRulesController {
   async remove(@Req() req, @Param('id') id: string) {
     const userId = req.user?.id || req.user?.userId;
     if (!userId) throw new UnauthorizedException('User not authenticated');
+    if (!CALENDAR_WRITE_ROLES.includes(req.user.role)) throw new ForbiddenException('Seul un gestionnaire peut modifier le calendrier');
 
     return this.service.remove(id, userId);
   }
