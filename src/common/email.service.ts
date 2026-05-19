@@ -7,16 +7,22 @@ export class EmailService {
   private transporter: nodemailer.Transporter;
 
   constructor() {
-    // Configuration du transporteur email
     this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      host: process.env.SMTP_HOST || 'smtp.free.fr',
       port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+      secure: process.env.SMTP_SECURE === 'true',
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
+
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      this.logger.warn('SMTP_USER / SMTP_PASS non configurés — les emails ne seront pas envoyés');
+    }
   }
 
   async sendVerificationEmail(email: string, token: string, fullName?: string) {
@@ -24,7 +30,7 @@ export class EmailService {
     const verificationUrl = `${frontendUrl}/auth/verify-email?token=${token}`;
 
     const mailOptions = {
-      from: `"Plateforme Santé" <${process.env.SMTP_USER}>`,
+      from: `"Ibogha Santé" <${process.env.SMTP_USER}>`,
       to: email,
       subject: 'Confirmez votre adresse email',
       html: `
@@ -101,7 +107,7 @@ export class EmailService {
               <p style="margin-top: 30px;">Si vous n'avez pas créé de compte, vous pouvez ignorer cet email en toute sécurité.</p>
             </div>
             <div class="footer">
-              <p>© ${new Date().getFullYear()} Plateforme Santé. Tous droits réservés.</p>
+              <p>© ${new Date().getFullYear()} Ibogha Santé. Tous droits réservés.</p>
               <p>Cet email a été envoyé à ${email}</p>
             </div>
           </body>
@@ -120,7 +126,7 @@ export class EmailService {
 
         Si vous n'avez pas créé de compte, vous pouvez ignorer cet email.
 
-        © ${new Date().getFullYear()} Plateforme Santé
+        © ${new Date().getFullYear()} Ibogha Santé
       `,
     };
 
@@ -139,7 +145,7 @@ export class EmailService {
     const resetUrl = `${frontendUrl}/auth/reset-password?token=${token}`;
 
     const mailOptions = {
-      from: `"Plateforme Santé" <${process.env.SMTP_USER}>`,
+      from: `"Ibogha Santé" <${process.env.SMTP_USER}>`,
       to: email,
       subject: 'Réinitialisation de votre mot de passe',
       html: `
@@ -216,7 +222,7 @@ export class EmailService {
               <p style="margin-top: 30px;"><strong>Si vous n'avez pas demandé cette réinitialisation, ignorez cet email. Votre mot de passe restera inchangé.</strong></p>
             </div>
             <div class="footer">
-              <p>© ${new Date().getFullYear()} Plateforme Santé. Tous droits réservés.</p>
+              <p>© ${new Date().getFullYear()} Ibogha Santé. Tous droits réservés.</p>
             </div>
           </body>
         </html>
@@ -250,7 +256,7 @@ export class EmailService {
     });
 
     const mailOptions = {
-      from: `"Plateforme Santé" <${process.env.SMTP_USER}>`,
+      from: `"Ibogha Santé" <${process.env.SMTP_USER}>`,
       to: email,
       subject: 'Rappel de rendez-vous - Health Platform',
       html: `
@@ -308,10 +314,10 @@ export class EmailService {
                 <p style="margin: 8px 0;"><strong>🏥 Type de consultation :</strong> ${appointmentType}</p>
               </div>
               <p>Si vous ne pouvez pas honorer ce rendez-vous, merci de nous prévenir au plus tôt via votre espace patient.</p>
-              <p>Cordialement,<br>L'équipe Health Platform</p>
+              <p>Cordialement,<br>L'équipe Ibogha Santé</p>
             </div>
             <div class="footer">
-              <p>© ${new Date().getFullYear()} Plateforme Santé. Tous droits réservés.</p>
+              <p>© ${new Date().getFullYear()} Ibogha Santé. Tous droits réservés.</p>
             </div>
           </body>
         </html>
@@ -345,7 +351,7 @@ export class EmailService {
     });
 
     const mailOptions = {
-      from: `"Plateforme Santé" <${process.env.SMTP_USER}>`,
+      from: `"Ibogha Santé" <${process.env.SMTP_USER}>`,
       to: email,
       subject: 'Confirmation de rendez-vous - Health Platform',
       html: `
@@ -403,10 +409,10 @@ export class EmailService {
                 <p style="margin: 8px 0;"><strong>🏥 Type de consultation :</strong> ${appointmentType}</p>
               </div>
               <p>Merci de votre confiance.</p>
-              <p>Cordialement,<br>L'équipe Health Platform</p>
+              <p>Cordialement,<br>L'équipe Ibogha Santé</p>
             </div>
             <div class="footer">
-              <p>© ${new Date().getFullYear()} Plateforme Santé. Tous droits réservés.</p>
+              <p>© ${new Date().getFullYear()} Ibogha Santé. Tous droits réservés.</p>
             </div>
           </body>
         </html>
@@ -441,7 +447,7 @@ export class EmailService {
     });
 
     const mailOptions = {
-      from: `"Plateforme Santé" <${process.env.SMTP_USER}>`,
+      from: `"Ibogha Santé" <${process.env.SMTP_USER}>`,
       to: email,
       subject: 'Annulation de rendez-vous - Health Platform',
       html: `
@@ -500,10 +506,10 @@ export class EmailService {
                 ${reason ? `<p style="margin: 8px 0;"><strong>💬 Raison :</strong> ${reason}</p>` : ''}
               </div>
               <p>Vous pouvez prendre un nouveau rendez-vous sur notre plateforme.</p>
-              <p>Cordialement,<br>L'équipe Health Platform</p>
+              <p>Cordialement,<br>L'équipe Ibogha Santé</p>
             </div>
             <div class="footer">
-              <p>© ${new Date().getFullYear()} Plateforme Santé. Tous droits réservés.</p>
+              <p>© ${new Date().getFullYear()} Ibogha Santé. Tous droits réservés.</p>
             </div>
           </body>
         </html>
@@ -547,7 +553,7 @@ export class EmailService {
     });
 
     const mailOptions = {
-      from: `"Plateforme Santé" <${process.env.SMTP_USER}>`,
+      from: `"Ibogha Santé" <${process.env.SMTP_USER}>`,
       to: email,
       subject: 'Rendez-vous reporté - Health Platform',
       html: `
@@ -606,10 +612,10 @@ export class EmailService {
                 <p style="margin: 8px 0;"><strong>🏥 Type de consultation :</strong> ${appointmentType}</p>
               </div>
               <p>Merci de votre compréhension.</p>
-              <p>Cordialement,<br>L'équipe Health Platform</p>
+              <p>Cordialement,<br>L'équipe Ibogha Santé</p>
             </div>
             <div class="footer">
-              <p>© ${new Date().getFullYear()} Plateforme Santé. Tous droits réservés.</p>
+              <p>© ${new Date().getFullYear()} Ibogha Santé. Tous droits réservés.</p>
             </div>
           </body>
         </html>
@@ -628,7 +634,7 @@ export class EmailService {
 
   async sendAdminPasswordReset(email: string, userName: string, tempPassword: string) {
     const mailOptions = {
-      from: `"Plateforme Santé" <${process.env.SMTP_USER}>`,
+      from: `"Ibogha Santé" <${process.env.SMTP_USER}>`,
       to: email,
       subject: 'Votre mot de passe a été réinitialisé',
       html: `
@@ -662,10 +668,10 @@ export class EmailService {
                   <li>Si vous n'avez pas demandé cette réinitialisation, contactez le support immédiatement.</li>
                 </ul>
               </div>
-              <p style="margin-top: 24px;">Cordialement,<br>L'équipe Health Platform</p>
+              <p style="margin-top: 24px;">Cordialement,<br>L'équipe Ibogha Santé</p>
             </div>
             <div class="footer">
-              <p>© ${new Date().getFullYear()} Plateforme Santé. Tous droits réservés.</p>
+              <p>© ${new Date().getFullYear()} Ibogha Santé. Tous droits réservés.</p>
             </div>
           </body>
         </html>
@@ -694,7 +700,7 @@ export class EmailService {
     });
 
     const mailOptions = {
-      from: `"Plateforme Santé" <${process.env.SMTP_USER}>`,
+      from: `"Ibogha Santé" <${process.env.SMTP_USER}>`,
       to: email,
       subject: 'Demande de rendez-vous reçue - Health Platform',
       html: `
@@ -725,10 +731,10 @@ export class EmailService {
                 <p style="margin: 12px 0 0;"><span class="badge">En attente de confirmation</span></p>
               </div>
               <p>Vous recevrez un email dès que le médecin aura confirmé ou modifié votre rendez-vous.</p>
-              <p>Cordialement,<br>L'équipe Health Platform</p>
+              <p>Cordialement,<br>L'équipe Ibogha Santé</p>
             </div>
             <div class="footer">
-              <p>© ${new Date().getFullYear()} Plateforme Santé. Tous droits réservés.</p>
+              <p>© ${new Date().getFullYear()} Ibogha Santé. Tous droits réservés.</p>
             </div>
           </body>
         </html>
@@ -763,7 +769,7 @@ export class EmailService {
     });
 
     const mailOptions = {
-      from: `"Plateforme Santé" <${process.env.SMTP_USER}>`,
+      from: `"Ibogha Santé" <${process.env.SMTP_USER}>`,
       to: doctorEmail,
       subject: `Nouveau rendez-vous — ${patientName}`,
       html: `
@@ -800,10 +806,10 @@ export class EmailService {
                 </p>
               </div>
               ${!autoConfirmed ? '<p><strong>Action requise :</strong> Veuillez confirmer ou refuser ce rendez-vous depuis votre espace professionnel.</p>' : ''}
-              <p>Cordialement,<br>L'équipe Health Platform</p>
+              <p>Cordialement,<br>L'équipe Ibogha Santé</p>
             </div>
             <div class="footer">
-              <p>© ${new Date().getFullYear()} Plateforme Santé. Tous droits réservés.</p>
+              <p>© ${new Date().getFullYear()} Ibogha Santé. Tous droits réservés.</p>
             </div>
           </body>
         </html>
@@ -837,14 +843,14 @@ export class EmailService {
       : `<strong>${inviterName}</strong> vous invite à rejoindre son équipe en tant que <strong>${role}</strong>. Créez votre compte pour accepter l'invitation et accéder à la plateforme.`;
 
     const mailOptions = {
-      from: `"Plateforme Santé" <${process.env.SMTP_USER || 'noreply@healthplatform.com'}>`,
+      from: `"Ibogha Santé" <${process.env.SMTP_USER || 'noreply@healthplatform.com'}>`,
       to: email,
       subject: `Invitation à rejoindre l'équipe de ${inviterName}`,
       html: `
         <html>
           <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
             <div style="background: linear-gradient(135deg, #0d9488, #0891b2); padding: 20px; border-radius: 12px 12px 0 0; text-align: center;">
-              <h1 style="color: white; margin: 0;">Plateforme Santé</h1>
+              <h1 style="color: white; margin: 0;">Ibogha Santé</h1>
             </div>
             <div style="background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px;">
               <p>Bonjour ${memberName},</p>
@@ -853,7 +859,7 @@ export class EmailService {
                 <a href="${actionUrl}" style="background: #0d9488; color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold;">${actionLabel}</a>
               </div>
               <p style="color: #64748b; font-size: 14px;">Si vous n'avez pas demandé cette invitation, vous pouvez ignorer cet email.</p>
-              <p>Cordialement,<br>L'équipe Health Platform</p>
+              <p>Cordialement,<br>L'équipe Ibogha Santé</p>
             </div>
           </body>
         </html>

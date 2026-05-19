@@ -370,6 +370,55 @@ export class UsersService {
     };
   }
 
+  async anonymizeAccount(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        email: `supprime_${userId}@supprime.ga`,
+        fullName: 'Compte supprimé',
+        phone: null,
+        city: null,
+        birthdate: null,
+        avatarUrl: null,
+        password: null,
+      },
+    });
+    // Révoquer les sessions OAuth
+    await this.prisma.account.deleteMany({ where: { userId } });
+    return { message: 'Compte anonymisé avec succès' };
+  }
+
+  async exportUserData(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true, email: true, fullName: true, phone: true,
+        sex: true, birthdate: true, city: true, role: true, createdAt: true,
+      },
+    });
+
+    const [appointments, healthRecords, medicalNotes, invoices] = await Promise.all([
+      this.prisma.appointment.findMany({
+        where: { patientId: userId },
+        include: { slot: true, kind: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.healthRecord.findMany({ where: { patientId: userId }, orderBy: { createdAt: 'desc' } }).catch(() => []),
+      this.prisma.medicalNote.findMany({ where: { patientId: userId }, orderBy: { createdAt: 'desc' } }).catch(() => []),
+      this.prisma.invoice.findMany({ where: { patientId: userId }, orderBy: { createdAt: 'desc' } }).catch(() => []),
+    ]);
+
+    return {
+      exportedAt: new Date().toISOString(),
+      legalBasis: 'Loi 025/2023 — Protection des données personnelles (Gabon)',
+      profile: user,
+      appointments,
+      healthRecords,
+      medicalNotes,
+      invoices,
+    };
+  }
+
   /**
    * Rechercher des patients d'un médecin
    */

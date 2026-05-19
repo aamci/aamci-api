@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   Patch,
   Post,
@@ -90,6 +91,13 @@ export class AdminController {
   async activateUser(@Req() req, @Param('id') id: string) {
     requireAdminWrite(req.user);
     return this.adminService.activateUser(id);
+  }
+
+  @Delete('users/:id')
+  async deleteUser(@Req() req, @Param('id') id: string) {
+    if (req.user.role !== 'ADMIN') throw new ForbiddenException('Réservé aux ADMIN');
+    if (id === req.user.userId) throw new ForbiddenException('Impossible de supprimer votre propre compte');
+    return this.adminService.deleteUser(id);
   }
 
   @Post('users/:id/reset-password')

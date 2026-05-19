@@ -1,5 +1,6 @@
 // src/users/users.controller.ts
-import { Body, Controller, Get, Post, Put, Query, Req, UseGuards, BadRequestException, Param } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Post, Put, Query, Req, Res, UseGuards, BadRequestException, Param } from '@nestjs/common';
+import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UsersService } from './users.service';
 
@@ -71,6 +72,20 @@ export class UsersController {
       throw new BadRequestException('Mot de passe actuel et nouveau mot de passe requis');
     }
     return this.users.changePassword(userId, dto.currentPassword, dto.newPassword);
+  }
+
+  @Delete('me')
+  async deleteMe(@Req() req) {
+    return this.users.anonymizeAccount(req.user.userId);
+  }
+
+  @Get('me/export')
+  async exportMe(@Req() req, @Res() res: Response) {
+    const data = await this.users.exportUserData(req.user.userId);
+    const filename = `mes-donnees-${new Date().toISOString().split('T')[0]}.json`;
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(JSON.stringify(data, null, 2));
   }
 
   @Get('patients')

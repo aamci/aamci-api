@@ -13,6 +13,7 @@
 stages:
   - build
   - deploy
+  - migrate
 
 # ── SSH helper ────────────────────────────────────────────────────────────────
 
@@ -101,3 +102,63 @@ deploy:api:preprod:
   script:
     - ssh "$DEPLOY_USER@$DEPLOY_HOST"
       "bash $DEPLOY_DIR/infra/scripts/deploy.sh api preprod-$CI_COMMIT_SHORT_SHA preprod"
+
+# ── Migration DB (manuel) ─────────────────────────────────────────────────────
+#
+# Déclencher via : GitLab → Pipelines → Run pipeline → variables :
+#   MIGRATE_SRC_DOCKER  ex: health_postgres
+#   MIGRATE_SRC_URL     ex: postgresql://user:pass@old-host:5432/db  (si source distante)
+#   MIGRATE_DST_URL     ex: postgresql://user:pass@new-host:5432/db
+#   MIGRATE_DST_DOCKER  ex: health_postgres_new  (si cible locale)
+#   MIGRATE_SCHEMA_ONLY true  (optionnel)
+#   MIGRATE_DATA_ONLY   true  (optionnel)
+#   MIGRATE_TABLES      User,Appointment  (optionnel)
+#
+# Variables à définir dans GitLab → Settings → CI/CD → Variables :
+#   DEPLOY_HOST, DEPLOY_USER, DEPLOY_DIR, SSH_PRIVATE_KEY (déjà présentes)
+
+migrate:db:
+  stage: migrate
+  image: alpine:3.19
+  rules:
+    - when: manual
+      allow_failure: false
+  before_script:
+    - *ssh-before
+  script:
+    - |
+      EXTRA_FLAGS=""
+      [ "${MIGRATE_SCHEMA_ONLY:-}" = "true" ] && EXTRA_FLAGS="$EXTRA_FLAGS --schema-only"
+      [ "${MIGRATE_DATA_ONLY:-}"   = "true" ] && EXTRA_FLAGS="$EXTRA_FLAGS --data-only"
+      [ -n "${MIGRATE_TABLES:-}"            ] && EXTRA_FLAGS="$EXTRA_FLAGS --tables '${MIGRATE_TABLES}'"
+
+      ssh "$DEPLOY_USER@$DEPLOY_HOST" "bash $DEPLOY_DIR/infra/scripts/migrate-db.sh \
+        ${MIGRATE_SRC_DOCKER:+--src-docker '$MIGRATE_SRC_DOCKER'} \
+        ${MIGRATE_SRC_URL:+--src-url '$MIGRATE_SRC_URL'} \
+        ${MIGRATE_DST_DOCKER:+--dst-docker '$MIGRATE_DST_DOCKER'} \
+        ${MIGRATE_DST_URL:+--dst-url '$MIGRATE_DST_URL'} \
+        $EXTRA_FLAGS"
+  artifacts:
+    when: always
+    paths:
+      - /tmp/restore_log.txt
+    expire_in: 7 days
+
+# ── Backup DB (manuel ou planifié) ───────────────────────────────────────────
+
+backup:db:
+  stage: migrate
+  image: alpine:3.19
+  rules:
+    - when: manual
+      allow_failure: false
+  before_script:
+    - *ssh-before
+  script:
+    - |
+      BACKUP_PATH="/opt/backups/health/backup_${CI_COMMIT_SHORT_SHA:-manual}_$(date +%Y%m%d_%H%M%S).sql"
+      ssh "$DEPLOY_USER@$DEPLOY_HOST" "bash $DEPLOY_DIR/infra/scripts/migrate-db.sh \
+        --src-docker health_postgres \
+        --dump-only \
+        --out '$BACKUP_PATH'"
+      echo "Backup disponible sur le serveur : $BACKUP_PATH"

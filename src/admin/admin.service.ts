@@ -178,6 +178,26 @@ export class AdminService {
     return this.updateUser(id, { isActive: true });
   }
 
+  async deleteUser(id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('Utilisateur non trouvé');
+    await this.prisma.user.update({
+      where: { id },
+      data: {
+        email: `supprime_${id}@supprime.ga`,
+        fullName: 'Compte supprimé',
+        phone: null,
+        city: null,
+        birthdate: null,
+        avatarUrl: null,
+        password: null,
+        isActive: false,
+      },
+    });
+    await this.prisma.account.deleteMany({ where: { userId: id } });
+    return { message: 'Utilisateur anonymisé avec succès' };
+  }
+
   async resetUserPassword(id: string, adminId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },

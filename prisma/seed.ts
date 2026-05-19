@@ -43,66 +43,154 @@ async function main() {
   // ========================================
   console.log('🏥 Création des établissements...');
 
-  const chuParis = await prisma.facility.create({
+  const chuLibreville = await prisma.facility.create({
     data: {
-      name: 'CHU Saint-Louis',
+      name: 'Libreville University Hospital',
       type: 'CHU',
-      description: 'Centre Hospitalier Universitaire de référence à Paris, spécialisé en hématologie et dermatologie',
-      address: '1 Avenue Claude Vellefaux',
-      city: 'Paris',
-      geoLat: 48.8728,
-      geoLng: 2.3686,
-      phone: '+33 1 42 49 49 49',
-      email: 'contact@chu-stlouis.fr',
-      website: 'https://chu-stlouis.fr',
-      services: JSON.stringify(['Cardiologie', 'Dermatologie', 'Hématologie', 'Pédiatrie', 'Urgences']),
+      description: 'Principal centre hospitalier universitaire de Libreville, référence nationale pour les soins spécialisés et la formation médicale au Gabon',
+      address: 'Boulevard du Bord de Mer',
+      city: 'Libreville',
+      geoLat: 0.3924,
+      geoLng: 9.4536,
+      phone: '+241 01 76 12 34',
+      email: 'contact@chu-libreville.ga',
+      website: 'https://chu-libreville.ga',
+      services: JSON.stringify(['Cardiologie', 'Neurologie', 'Pédiatrie', 'Gynécologie', 'Urgences', 'Chirurgie générale']),
     },
   });
 
-  const cliniqueParis = await prisma.facility.create({
+  const chuOwendo = await prisma.facility.create({
     data: {
-      name: 'Clinique Cardio Paris',
-      type: 'CLINIC',
-      description: 'Clinique privée spécialisée en cardiologie et chirurgie cardiovasculaire',
-      address: '12 rue de la Santé',
-      city: 'Paris',
-      geoLat: 48.8366,
-      geoLng: 2.3442,
-      phone: '+33 1 45 67 89 01',
-      email: 'contact@cardio-paris.fr',
-      website: 'https://cardio-paris.fr',
-      services: JSON.stringify(['Cardiologie', 'Chirurgie cardiaque', 'Échocardiographie', 'Holter']),
+      name: 'Hospital Center University D\'Owendo',
+      type: 'CHU',
+      description: 'Centre hospitalier universitaire d\'Owendo, spécialisé en chirurgie et médecine interne',
+      address: 'Route d\'Owendo',
+      city: 'Owendo',
+      geoLat: 0.2833,
+      geoLng: 9.5167,
+      phone: '+241 01 70 45 67',
+      email: 'contact@chu-owendo.ga',
+      services: JSON.stringify(['Chirurgie', 'Médecine interne', 'Orthopédie', 'Urologie', 'Maternité']),
     },
   });
 
-  const centreLyon = await prisma.facility.create({
+  const fondationEbori = await prisma.facility.create({
     data: {
-      name: 'Centre Médical Bellecour',
-      type: 'CENTER',
-      description: 'Centre médical pluridisciplinaire au cœur de Lyon',
-      address: '4 place Bellecour',
-      city: 'Lyon',
-      geoLat: 45.7578,
-      geoLng: 4.8320,
-      phone: '+33 4 78 42 12 34',
-      email: 'contact@centre-bellecour.fr',
-      website: 'https://centre-bellecour.fr',
-      services: JSON.stringify(['Dermatologie', 'Médecine générale', 'Kinésithérapie', 'Nutrition']),
+      name: 'CHU Fondation Jeanne Ebori',
+      type: 'CHU',
+      description: 'Fondation hospitalière universitaire dédiée à la santé maternelle et infantile au Gabon',
+      address: 'Quartier Louis',
+      city: 'Libreville',
+      geoLat: 0.4162,
+      geoLng: 9.4673,
+      phone: '+241 01 74 23 45',
+      email: 'contact@fondation-ebori.ga',
+      services: JSON.stringify(['Gynécologie-Obstétrique', 'Pédiatrie', 'Néonatologie', 'Planification familiale']),
     },
   });
 
-  const polycliniqueMarseille = await prisma.facility.create({
+  const hopitalSinoGabonais = await prisma.facility.create({
     data: {
-      name: 'Polyclinique du Vieux-Port',
+      name: 'Hôpital Sino-Gabonais',
+      type: 'CHU',
+      description: 'Hôpital de coopération sino-gabonaise, offrant des soins de haute qualité avec équipements modernes',
+      address: 'Boulevard Triomphal Omar Bongo',
+      city: 'Libreville',
+      geoLat: 0.3996,
+      geoLng: 9.4437,
+      phone: '+241 01 77 89 01',
+      email: 'contact@hopital-sino-gabonais.ga',
+      services: JSON.stringify(['Cardiologie', 'Ophtalmologie', 'Neurochirurgie', 'Imagerie médicale', 'Urgences']),
+    },
+  });
+
+  const polycliniqueElRapha = await prisma.facility.create({
+    data: {
+      name: 'Polyclinique El Rapha',
       type: 'POLYCLINIC',
-      description: 'Polyclinique moderne avec plateau technique complet',
-      address: '7 quai des Belges',
-      city: 'Marseille',
-      geoLat: 43.2965,
-      geoLng: 5.3698,
-      phone: '+33 4 91 55 12 34',
-      email: 'contact@polyclinique-marseille.fr',
-      services: JSON.stringify(['Chirurgie', 'Médecine générale', 'Imagerie médicale']),
+      description: 'Polyclinique moderne proposant des consultations spécialisées et des soins ambulatoires de qualité',
+      address: 'Quartier Batterie IV',
+      city: 'Libreville',
+      geoLat: 0.4089,
+      geoLng: 9.4412,
+      phone: '+241 01 72 34 56',
+      email: 'contact@polyclinique-elrapha.ga',
+      services: JSON.stringify(['Médecine générale', 'Pédiatrie', 'Gynécologie', 'Dermatologie', 'Analyses médicales']),
+    },
+  });
+
+  const polycliniqueChambrier = await prisma.facility.create({
+    data: {
+      name: 'Chambrier Polyclinic',
+      type: 'POLYCLINIC',
+      description: 'Polyclinique familiale réputée, offrant une prise en charge globale et personnalisée',
+      address: 'Quartier Glass',
+      city: 'Libreville',
+      geoLat: 0.3871,
+      geoLng: 9.4589,
+      phone: '+241 01 73 56 78',
+      email: 'contact@chambrier-polyclinic.ga',
+      services: JSON.stringify(['Médecine générale', 'Cardiologie', 'Neurologie', 'Chirurgie ambulatoire']),
+    },
+  });
+
+  const centreDiagnostic = await prisma.facility.create({
+    data: {
+      name: 'Centre Diagnostic de Libreville',
+      type: 'CENTER',
+      description: 'Centre spécialisé en imagerie médicale et analyses diagnostiques de pointe',
+      address: 'Avenue Bouet',
+      city: 'Libreville',
+      geoLat: 0.4234,
+      geoLng: 9.4501,
+      phone: '+241 01 71 23 45',
+      email: 'contact@centre-diagnostic-lib.ga',
+      services: JSON.stringify(['Scanner', 'IRM', 'Échographie', 'Radiologie', 'Biologie médicale']),
+    },
+  });
+
+  const polycliniqueMarthenica = await prisma.facility.create({
+    data: {
+      name: 'Polyclinique Marthenica',
+      type: 'POLYCLINIC',
+      description: 'Polyclinique offrant des soins pluridisciplinaires dans un cadre moderne et accueillant',
+      address: 'Quartier Montagne Sainte',
+      city: 'Libreville',
+      geoLat: 0.4011,
+      geoLng: 9.4623,
+      phone: '+241 01 74 67 89',
+      email: 'contact@marthenica.ga',
+      services: JSON.stringify(['Médecine interne', 'Cardiologie', 'Endocrinologie', 'Rhumatologie']),
+    },
+  });
+
+  const polycliniqueTsitse = await prisma.facility.create({
+    data: {
+      name: 'Polyclinique Tsitse',
+      type: 'POLYCLINIC',
+      description: 'Établissement de santé de proximité au service des populations de Libreville',
+      address: 'Quartier Lalala',
+      city: 'Libreville',
+      geoLat: 0.4156,
+      geoLng: 9.4378,
+      phone: '+241 01 75 89 01',
+      email: 'contact@polyclinique-tsitse.ga',
+      services: JSON.stringify(['Médecine générale', 'Pédiatrie', 'Maternité', 'Soins infirmiers']),
+    },
+  });
+
+  const cabinetBatteryIV = await prisma.facility.create({
+    data: {
+      name: 'Medical Office Battery IV',
+      type: 'CLINIC',
+      description: 'Cabinet médical spécialisé situé dans le quartier Batterie IV de Libreville',
+      address: 'Batterie IV',
+      city: 'Libreville',
+      geoLat: 0.4078,
+      geoLng: 9.4398,
+      phone: '+241 01 76 01 23',
+      email: 'contact@medical-battery4.ga',
+      services: JSON.stringify(['Médecine générale', 'Consultations spécialisées', 'Petite chirurgie']),
     },
   });
 
@@ -114,14 +202,62 @@ async function main() {
   const patients: any[] = [];
   let patientCounter = 1;
   const patientNames = [
-    { fullName: 'Marie Dubois', email: 'marie.dubois@email.fr', city: 'Paris', sex: 'F', birthdate: new Date('1985-03-15') },
-    { fullName: 'Jean Martin', email: 'jean.martin@email.fr', city: 'Lyon', sex: 'M', birthdate: new Date('1978-07-22') },
-    { fullName: 'Sophie Lemoine', email: 'sophie.lemoine@email.fr', city: 'Paris', sex: 'F', birthdate: new Date('1992-11-08') },
-    { fullName: 'Pierre Durand', email: 'pierre.durand@email.fr', city: 'Marseille', sex: 'M', birthdate: new Date('1965-05-30') },
-    { fullName: 'Isabelle Moreau', email: 'isabelle.moreau@email.fr', city: 'Lyon', sex: 'F', birthdate: new Date('1990-09-12') },
-    { fullName: 'Thomas Bernard', email: 'thomas.bernard@email.fr', city: 'Paris', sex: 'M', birthdate: new Date('1988-01-25') },
-    { fullName: 'Catherine Laurent', email: 'catherine.laurent@email.fr', city: 'Marseille', sex: 'F', birthdate: new Date('1975-12-03') },
-    { fullName: 'François Petit', email: 'francois.petit@email.fr', city: 'Lyon', sex: 'M', birthdate: new Date('1995-06-18') },
+    {
+      fullName: 'Sylvie Moussavou', email: 'sylvie.moussavou@email.ga',
+      city: 'Libreville', sex: 'F', birthdate: new Date('1985-03-15'),
+      phone: '+241 07 41 23 87', birthPlace: 'Libreville',
+      address: 'Quartier Glass, Rue des Cocotiers', postalCode: 'BP 1234',
+      insurance: 'CNAMGS', mutual: 'OGAR', blood: 'O+', height: 165, weight: 62,
+    },
+    {
+      fullName: 'Jean-Baptiste Nzoghe', email: 'jb.nzoghe@email.ga',
+      city: 'Libreville', sex: 'M', birthdate: new Date('1978-07-22'),
+      phone: '+241 07 62 34 51', birthPlace: 'Port-Gentil',
+      address: 'Quartier Nzeng-Ayong, Avenue du Gabon', postalCode: 'BP 2156',
+      insurance: 'CNSS', mutual: 'AXA Gabon', blood: 'A+', height: 178, weight: 80,
+    },
+    {
+      fullName: 'Carine Obame', email: 'carine.obame@email.ga',
+      city: 'Owendo', sex: 'F', birthdate: new Date('1992-11-08'),
+      phone: '+241 07 53 67 29', birthPlace: 'Oyem',
+      address: 'Owendo, Quartier Awendjé', postalCode: 'BP 3012',
+      insurance: 'CNAMGS', mutual: 'Gabon Assurances', blood: 'B+', height: 162, weight: 58,
+    },
+    {
+      fullName: 'Patrick Nguema', email: 'patrick.nguema@email.ga',
+      city: 'Libreville', sex: 'M', birthdate: new Date('1965-05-30'),
+      phone: '+241 07 74 89 13', birthPlace: 'Franceville',
+      address: 'Quartier La Sorbonne, Rue Nationale', postalCode: 'BP 4567',
+      insurance: 'CNSS', mutual: 'OGAR', blood: 'AB+', height: 175, weight: 88,
+    },
+    {
+      fullName: 'Bénédicte Mba', email: 'benedicte.mba@email.ga',
+      city: 'Libreville', sex: 'F', birthdate: new Date('1990-09-12'),
+      phone: '+241 07 35 12 76', birthPlace: 'Mouila',
+      address: 'Quartier Batterie IV, Avenue du Général De Gaulle', postalCode: 'BP 5890',
+      insurance: 'CNAMGS', mutual: 'AXA Gabon', blood: 'A-', height: 168, weight: 65,
+    },
+    {
+      fullName: 'Rodrigue Mintsa', email: 'rodrigue.mintsa@email.ga',
+      city: 'Owendo', sex: 'M', birthdate: new Date('1988-01-25'),
+      phone: '+241 07 86 45 32', birthPlace: 'Libreville',
+      address: 'Owendo Zone Industrielle, Rue du Port', postalCode: 'BP 6234',
+      insurance: 'CNSS', mutual: 'Gabon Assurances', blood: 'O-', height: 182, weight: 90,
+    },
+    {
+      fullName: 'Joëlle Bekale', email: 'joelle.bekale@email.ga',
+      city: 'Libreville', sex: 'F', birthdate: new Date('1975-12-03'),
+      phone: '+241 07 27 58 94', birthPlace: 'Lambaréné',
+      address: 'Quartier Melen, Boulevard du Bord de Mer', postalCode: 'BP 7123',
+      insurance: 'CNAMGS', mutual: 'OGAR', blood: 'B-', height: 160, weight: 70,
+    },
+    {
+      fullName: 'Gaston Essono', email: 'gaston.essono@email.ga',
+      city: 'Libreville', sex: 'M', birthdate: new Date('1995-06-18'),
+      phone: '+241 07 19 73 46', birthPlace: 'Libreville',
+      address: 'Quartier Akanda, Rue des Manguiers', postalCode: 'BP 8456',
+      insurance: 'CNAMGS', mutual: 'AXA Gabon', blood: 'A+', height: 172, weight: 74,
+    },
   ];
 
   for (const patientData of patientNames) {
@@ -134,7 +270,7 @@ async function main() {
         city: patientData.city,
         sex: patientData.sex,
         birthdate: patientData.birthdate,
-        phone: `+33 6 ${Math.floor(Math.random() * 90 + 10)} ${Math.floor(Math.random() * 90 + 10)} ${Math.floor(Math.random() * 90 + 10)} ${Math.floor(Math.random() * 90 + 10)}`,
+        phone: patientData.phone,
         emailVerified: true,
       },
     });
@@ -143,22 +279,22 @@ async function main() {
       data: {
         userId: user.id,
         civility: patientData.sex === 'F' ? 'MME' : 'MR',
-        birthLastName: patientData.fullName.split(' ')[1],
+        birthLastName: patientData.fullName.split(' ').slice(-1)[0],
         firstName: patientData.fullName.split(' ')[0],
         birthDate: patientData.birthdate,
-        birthPlace: faker.location.city(),
-        birthCountry: 'France',
-        phonePrimary: user.phone,
-        addressLine1: faker.location.streetAddress(),
-        postalCode: faker.location.zipCode('#####'),
+        birthPlace: patientData.birthPlace,
+        birthCountry: 'Gabon',
+        phonePrimary: patientData.phone,
+        addressLine1: patientData.address,
+        postalCode: patientData.postalCode,
         city: patientData.city,
-        country: 'France',
-        socialSecurityNumber: faker.string.numeric(15),
-        insuranceProvider: ['CPAM', 'MSA', 'RSI'][Math.floor(Math.random() * 3)],
-        mutualInsurance: ['Harmonie Mutuelle', 'MGEN', 'Malakoff Humanis'][Math.floor(Math.random() * 3)],
-        bloodGroup: ['A+', 'B+', 'AB+', 'O+', 'A-', 'B-', 'AB-', 'O-'][Math.floor(Math.random() * 8)],
-        heightCm: 160 + Math.floor(Math.random() * 30),
-        weightKg: 55 + Math.floor(Math.random() * 40),
+        country: 'Gabon',
+        socialSecurityNumber: faker.string.numeric(13),
+        insuranceProvider: patientData.insurance,
+        mutualInsurance: patientData.mutual,
+        bloodGroup: patientData.blood,
+        heightCm: patientData.height,
+        weightKg: patientData.weight,
         patientCode: `PAT-${String(patientCounter++).padStart(4, '0')}`,
       },
     });
@@ -171,81 +307,17 @@ async function main() {
   // ========================================
   console.log('👨‍⚕️ Création des médecins...');
 
-  // Docteur 1: Cardiologue Paris (CHU + Clinique)
+  // Docteur 1: Dr Marcel Eloi Rahandi Chambrier — Cardiologue
   const doctor1 = await prisma.user.create({
     data: {
-      email: 'dr.amelie.dupont@sante.fr',
+      email: 'dr.rahandi.chambrier@sante.ga',
       password: passwordHash,
       role: 'DOCTOR',
-      fullName: 'Dr Amélie Dupont',
-      city: 'Paris',
-      sex: 'F',
-      birthdate: new Date('1980-04-12'),
-      phone: '+33 6 12 34 56 78',
-      emailVerified: true,
-      avatarUrl: 'https://i.pravatar.cc/150?img=1',
-    },
-  });
-
-  await prisma.doctorProfile.create({
-    data: {
-      userId: doctor1.id,
-      specialty: 'Cardiologie',
-      hospitalType: 'Clinique privée',
-      address: '12 rue de la Santé',
-      city: 'Paris',
-      presentation: 'Cardiologue depuis 12 ans, spécialisée en prévention cardiovasculaire et échocardiographie. Prise en charge des pathologies coronariennes, insuffisance cardiaque et troubles du rythme.',
-      formations: 'DES Cardiologie et Maladies Vasculaires (Université Paris Descartes); DIU Échocardiographie; Formation Holter ECG et MAPA',
-      experiences: 'CHU Saint-Louis (2012-2017) - Chef de Clinique; Clinique Cardio Paris (2017-présent) - Praticien hospitalier',
-      facilities: {
-        connect: [{ id: chuParis.id }, { id: cliniqueParis.id }],
-      },
-    },
-  });
-
-  // Docteur 2: Dermatologue Lyon
-  const doctor2 = await prisma.user.create({
-    data: {
-      email: 'dr.benoit.martin@sante.fr',
-      password: passwordHash,
-      role: 'DOCTOR',
-      fullName: 'Dr Benoît Martin',
-      city: 'Lyon',
+      fullName: 'Dr Marcel Eloi Rahandi Chambrier',
+      city: 'Libreville',
       sex: 'M',
-      birthdate: new Date('1983-09-25'),
-      phone: '+33 6 23 45 67 89',
-      emailVerified: true,
-      avatarUrl: 'https://i.pravatar.cc/150?img=12',
-    },
-  });
-
-  await prisma.doctorProfile.create({
-    data: {
-      userId: doctor2.id,
-      specialty: 'Dermatologie',
-      hospitalType: 'Cabinet',
-      address: '4 place Bellecour',
-      city: 'Lyon',
-      presentation: 'Dermatologue spécialisé en dermatologie esthétique et laser. Prise en charge de l\'acné, psoriasis, eczéma et dépistage des cancers cutanés.',
-      formations: 'DES Dermatologie-Vénéréologie (Université Lyon 1); DIU Lasers médicaux; Formation en dermatoscopie',
-      experiences: 'Cabinet libéral Centre Bellecour (2015-présent); Consultation hospitalière CHU Lyon Sud',
-      facilities: {
-        connect: [{ id: centreLyon.id }],
-      },
-    },
-  });
-
-  // Docteur 3: Cardiologue Paris (CHU)
-  const doctor3 = await prisma.user.create({
-    data: {
-      email: 'dr.jean.rousseau@sante.fr',
-      password: passwordHash,
-      role: 'DOCTOR',
-      fullName: 'Dr Jean Rousseau',
-      city: 'Paris',
-      sex: 'M',
-      birthdate: new Date('1975-11-08'),
-      phone: '+33 6 34 56 78 90',
+      birthdate: new Date('1972-04-12'),
+      phone: '+241 07 12 34 56',
       emailVerified: true,
       avatarUrl: 'https://i.pravatar.cc/150?img=13',
     },
@@ -253,31 +325,30 @@ async function main() {
 
   await prisma.doctorProfile.create({
     data: {
-      userId: doctor3.id,
+      userId: doctor1.id,
       specialty: 'Cardiologie',
-      hospitalType: 'CHU',
-      address: '1 Avenue Claude Vellefaux',
-      city: 'Paris',
-      presentation: 'Cardiologue interventionnel spécialisé en électrophysiologie et implantation de stimulateurs cardiaques. Expert en ablation de la fibrillation auriculaire.',
-      formations: 'DES Cardiologie (Paris 7); Master Électrophysiologie interventionnelle; DIU Rythmologie et Stimulation cardiaque',
-      experiences: 'CHU Saint-Louis (2005-présent) - PU-PH, Chef du service de Rythmologie',
-      facilities: {
-        connect: [{ id: chuParis.id }],
-      },
+      hospitalType: 'Polyclinique',
+      address: 'Quartier Glass',
+      city: 'Libreville',
+      consultationPrice: 25000,
+      presentation: 'Cardiologue spécialisé en prévention cardiovasculaire et échocardiographie. Prise en charge des pathologies coronariennes, insuffisance cardiaque et hypertension artérielle.',
+      formations: 'Doctorat en Médecine (Université Omar Bongo Ondimba); Spécialisation Cardiologie (CHU Bordeaux); DIU Échocardiographie',
+      experiences: 'CHU de Libreville (2005-2015) — Chef de service Cardiologie; Chambrier Polyclinic (2015-présent) — Praticien senior',
+      facilities: { connect: [{ id: polycliniqueChambrier.id }, { id: chuLibreville.id }] },
     },
   });
 
-  // Docteur 4: Médecin généraliste Marseille
-  const doctor4 = await prisma.user.create({
+  // Docteur 2: Dr Marceline Aworet Chambrier Alawe — Gynécologue
+  const doctor2 = await prisma.user.create({
     data: {
-      email: 'dr.claire.dubois@sante.fr',
+      email: 'dr.marceline.alawe@sante.ga',
       password: passwordHash,
       role: 'DOCTOR',
-      fullName: 'Dr Claire Dubois',
-      city: 'Marseille',
+      fullName: 'Dr Marceline Aworet Chambrier Alawe',
+      city: 'Libreville',
       sex: 'F',
-      birthdate: new Date('1987-02-14'),
-      phone: '+33 6 45 67 89 01',
+      birthdate: new Date('1978-09-25'),
+      phone: '+241 07 23 45 67',
       emailVerified: true,
       avatarUrl: 'https://i.pravatar.cc/150?img=5',
     },
@@ -285,31 +356,92 @@ async function main() {
 
   await prisma.doctorProfile.create({
     data: {
-      userId: doctor4.id,
-      specialty: 'Médecine Générale',
-      hospitalType: 'Polyclinique',
-      address: '7 quai des Belges',
-      city: 'Marseille',
-      presentation: 'Médecin généraliste avec orientation en médecine familiale. Suivi de patients tous âges, prévention, dépistage et coordination des soins.',
-      formations: 'DES Médecine Générale (Université Aix-Marseille); DIU Tabacologie; Formation en éducation thérapeutique',
-      experiences: 'Polyclinique du Vieux-Port (2015-présent); Médecin coordonnateur EHPAD (2018-2020)',
-      facilities: {
-        connect: [{ id: polycliniqueMarseille.id }],
-      },
+      userId: doctor2.id,
+      specialty: 'Gynécologie-Obstétrique',
+      hospitalType: 'CHU',
+      address: 'Quartier Louis',
+      city: 'Libreville',
+      consultationPrice: 20000,
+      presentation: 'Gynécologue-obstétricienne spécialisée dans le suivi de grossesse, les accouchements à risque et la santé reproductive de la femme gabonaise.',
+      formations: 'Doctorat en Médecine (Université des Sciences de la Santé, Libreville); DES Gynécologie-Obstétrique (Université Paris VI)',
+      experiences: 'CHU Fondation Jeanne Ebori (2010-présent) — Chef de service Gynécologie; Consultations privées Chambrier Polyclinic',
+      facilities: { connect: [{ id: fondationEbori.id }, { id: polycliniqueChambrier.id }] },
     },
   });
 
-  // Docteur 5: Pédiatre au CHU Saint-Louis (même CHU que Dr Rousseau)
-  const doctor5 = await prisma.user.create({
+  // Docteur 3: Dr Urbain Alawoe — Médecin Généraliste
+  const doctor3 = await prisma.user.create({
     data: {
-      email: 'dr.sophie.lefevre@sante.fr',
+      email: 'dr.urbain.alawoe@sante.ga',
       password: passwordHash,
       role: 'DOCTOR',
-      fullName: 'Dr Sophie Lefèvre',
-      city: 'Paris',
+      fullName: 'Dr Urbain Alawoe',
+      city: 'Owendo',
+      sex: 'M',
+      birthdate: new Date('1980-11-08'),
+      phone: '+241 07 34 56 78',
+      emailVerified: true,
+      avatarUrl: 'https://i.pravatar.cc/150?img=15',
+    },
+  });
+
+  await prisma.doctorProfile.create({
+    data: {
+      userId: doctor3.id,
+      specialty: 'Médecine Générale',
+      hospitalType: 'CHU',
+      address: 'Route d\'Owendo',
+      city: 'Owendo',
+      consultationPrice: 15000,
+      presentation: 'Médecin généraliste avec 15 ans d\'expérience en médecine interne et urgences. Suivi des maladies tropicales, paludisme et pathologies chroniques.',
+      formations: 'Doctorat en Médecine (USS Libreville); Formation Médecine tropicale (Institut Pasteur Paris)',
+      experiences: 'CHU d\'Owendo (2010-présent) — Médecin des urgences; Medical Office Battery IV (consultations)',
+      facilities: { connect: [{ id: chuOwendo.id }, { id: cabinetBatteryIV.id }] },
+    },
+  });
+
+  // Docteur 4: Pr Minkobame — Neurologue (Professeur)
+  const doctor4 = await prisma.user.create({
+    data: {
+      email: 'pr.minkobame@sante.ga',
+      password: passwordHash,
+      role: 'DOCTOR',
+      fullName: 'Pr Minkobame',
+      city: 'Libreville',
+      sex: 'M',
+      birthdate: new Date('1965-02-14'),
+      phone: '+241 07 45 67 89',
+      emailVerified: true,
+      avatarUrl: 'https://i.pravatar.cc/150?img=14',
+    },
+  });
+
+  await prisma.doctorProfile.create({
+    data: {
+      userId: doctor4.id,
+      specialty: 'Neurologie',
+      hospitalType: 'CHU',
+      address: 'Boulevard Triomphal Omar Bongo',
+      city: 'Libreville',
+      consultationPrice: 35000,
+      presentation: 'Professeur de Neurologie, pionnier de la neurologie moderne au Gabon. Expert en accidents vasculaires cérébraux, épilepsie et maladies neuro-dégénératives.',
+      formations: 'Doctorat en Médecine (Paris); Agrégation Neurologie; Professeur des Universités-Praticien Hospitalier (PU-PH)',
+      experiences: 'Hôpital Sino-Gabonais (2000-présent) — Chef du service Neurologie; Université des Sciences de la Santé — Professeur titulaire',
+      facilities: { connect: [{ id: hopitalSinoGabonais.id }, { id: chuLibreville.id }] },
+    },
+  });
+
+  // Docteur 5: Dr Carole — Pédiatre
+  const doctor5 = await prisma.user.create({
+    data: {
+      email: 'dr.carole@sante.ga',
+      password: passwordHash,
+      role: 'DOCTOR',
+      fullName: 'Dr Carole',
+      city: 'Libreville',
       sex: 'F',
       birthdate: new Date('1985-06-20'),
-      phone: '+33 6 56 78 90 12',
+      phone: '+241 07 56 78 90',
       emailVerified: true,
       avatarUrl: 'https://i.pravatar.cc/150?img=9',
     },
@@ -320,110 +452,168 @@ async function main() {
       userId: doctor5.id,
       specialty: 'Pédiatrie',
       hospitalType: 'CHU',
-      address: '1 Avenue Claude Vellefaux',
-      city: 'Paris',
-      presentation: 'Pédiatre spécialisée en néonatologie et urgences pédiatriques. Suivi des enfants de 0 à 18 ans, vaccinations, consultations de puériculture.',
-      formations: 'DES Pédiatrie (Paris 6); DIU Néonatologie; DIU Urgences pédiatriques',
-      experiences: 'CHU Saint-Louis (2013-présent) - Service de Pédiatrie; Maternité Port-Royal (2010-2013)',
-      facilities: {
-        connect: [{ id: chuParis.id }],
-      },
+      address: 'Quartier Louis',
+      city: 'Libreville',
+      consultationPrice: 18000,
+      presentation: 'Pédiatre spécialisée dans le suivi du nourrisson et de l\'enfant. Expert en maladies tropicales pédiatriques, malnutrition et vaccinations.',
+      formations: 'Doctorat en Médecine (USS Libreville); DES Pédiatrie (Dakar); DIU Néonatologie',
+      experiences: 'CHU Fondation Jeanne Ebori (2013-présent) — Pédiatre référente; Consultations Polyclinique El Rapha',
+      facilities: { connect: [{ id: fondationEbori.id }, { id: polycliniqueElRapha.id }] },
     },
   });
 
-  // Docteur 6: Dermatologue au CHU Saint-Louis (même CHU)
+  // Docteur 6: Dr Gilles — Chirurgien
   const doctor6 = await prisma.user.create({
     data: {
-      email: 'dr.marc.bernard@sante.fr',
+      email: 'dr.gilles@sante.ga',
       password: passwordHash,
       role: 'DOCTOR',
-      fullName: 'Dr Marc Bernard',
-      city: 'Paris',
+      fullName: 'Dr Gilles',
+      city: 'Libreville',
       sex: 'M',
       birthdate: new Date('1978-03-30'),
-      phone: '+33 6 67 89 01 23',
+      phone: '+241 07 67 89 01',
       emailVerified: true,
-      avatarUrl: 'https://i.pravatar.cc/150?img=14',
+      avatarUrl: 'https://i.pravatar.cc/150?img=12',
     },
   });
 
   await prisma.doctorProfile.create({
     data: {
       userId: doctor6.id,
-      specialty: 'Dermatologie',
+      specialty: 'Chirurgie Générale',
       hospitalType: 'CHU',
-      address: '1 Avenue Claude Vellefaux',
-      city: 'Paris',
-      presentation: 'Dermatologue hospitalo-universitaire spécialisé en dermatologie oncologique. Expert en chirurgie des cancers cutanés et greffes.',
-      formations: 'DES Dermatologie-Vénéréologie (Paris 7); Master Oncologie cutanée; DIU Chirurgie dermatologique',
-      experiences: 'CHU Saint-Louis (2008-présent) - Chef de service adjoint Dermatologie',
-      facilities: {
-        connect: [{ id: chuParis.id }],
-      },
+      address: 'Boulevard du Bord de Mer',
+      city: 'Libreville',
+      consultationPrice: 30000,
+      presentation: 'Chirurgien généraliste expérimenté, spécialisé en chirurgie digestive et traumatologie. Pratique la chirurgie laparoscopique et les interventions d\'urgence.',
+      formations: 'Doctorat en Médecine (Libreville); DES Chirurgie Générale (Abidjan); Formation laparoscopie (Paris)',
+      experiences: 'CHU de Libreville (2008-présent) — Chirurgien senior; CHU d\'Owendo — Chirurgien consultant',
+      facilities: { connect: [{ id: chuLibreville.id }, { id: chuOwendo.id }] },
     },
   });
 
-  // Docteur 7: Cardiologue à la Clinique Cardio Paris (même clinique que Dr Dupont)
+  // Docteur 7: Dr Marius — Interniste
   const doctor7 = await prisma.user.create({
     data: {
-      email: 'dr.paul.morel@sante.fr',
+      email: 'dr.marius@sante.ga',
       password: passwordHash,
       role: 'DOCTOR',
-      fullName: 'Dr Paul Morel',
-      city: 'Paris',
+      fullName: 'Dr Marius',
+      city: 'Libreville',
       sex: 'M',
       birthdate: new Date('1982-08-15'),
-      phone: '+33 6 78 90 12 34',
+      phone: '+241 07 78 90 12',
       emailVerified: true,
-      avatarUrl: 'https://i.pravatar.cc/150?img=15',
+      avatarUrl: 'https://i.pravatar.cc/150?img=11',
     },
   });
 
   await prisma.doctorProfile.create({
     data: {
       userId: doctor7.id,
-      specialty: 'Cardiologie',
-      hospitalType: 'Clinique privée',
-      address: '12 rue de la Santé',
-      city: 'Paris',
-      presentation: 'Cardiologue interventionnel spécialisé en coronarographie et angioplastie. Prise en charge des syndromes coronariens aigus.',
-      formations: 'DES Cardiologie (Paris 5); Master Cardiologie interventionnelle; Formation angioplastie coronaire',
-      experiences: 'Clinique Cardio Paris (2015-présent) - Cardiologue interventionnel; CHU Pitié-Salpêtrière (2010-2015)',
-      facilities: {
-        connect: [{ id: cliniqueParis.id }],
-      },
+      specialty: 'Médecine Interne',
+      hospitalType: 'Polyclinique',
+      address: 'Quartier Montagne Sainte',
+      city: 'Libreville',
+      consultationPrice: 20000,
+      presentation: 'Interniste spécialisé dans la prise en charge des maladies chroniques, diabète, hypertension et pathologies auto-immunes.',
+      formations: 'Doctorat en Médecine (USS Libreville); DES Médecine Interne (Université de Bordeaux)',
+      experiences: 'Polyclinique Marthenica (2014-présent) — Médecin senior; Hôpital Sino-Gabonais (consultations)',
+      facilities: { connect: [{ id: polycliniqueMarthenica.id }, { id: hopitalSinoGabonais.id }] },
     },
   });
 
-  // Docteur 8: Médecin généraliste au Centre Bellecour Lyon (même centre que Dr Martin)
+  // Docteur 8: Dr Chitou — Dermatologue
   const doctor8 = await prisma.user.create({
     data: {
-      email: 'dr.julie.garcia@sante.fr',
+      email: 'dr.chitou@sante.ga',
       password: passwordHash,
       role: 'DOCTOR',
-      fullName: 'Dr Julie Garcia',
-      city: 'Lyon',
-      sex: 'F',
-      birthdate: new Date('1989-11-05'),
-      phone: '+33 6 89 01 23 45',
+      fullName: 'Dr Chitou',
+      city: 'Libreville',
+      sex: 'M',
+      birthdate: new Date('1984-05-22'),
+      phone: '+241 07 89 01 23',
       emailVerified: true,
-      avatarUrl: 'https://i.pravatar.cc/150?img=10',
+      avatarUrl: 'https://i.pravatar.cc/150?img=16',
     },
   });
 
   await prisma.doctorProfile.create({
     data: {
       userId: doctor8.id,
+      specialty: 'Dermatologie',
+      hospitalType: 'Polyclinique',
+      address: 'Quartier Batterie IV',
+      city: 'Libreville',
+      consultationPrice: 22000,
+      presentation: 'Dermatologue spécialisé dans les dermatoses tropicales, la dermatologie esthétique et le traitement des pathologies cutanées africaines.',
+      formations: 'Doctorat en Médecine (USS Libreville); DES Dermatologie-Vénéréologie (Dakar)',
+      experiences: 'Polyclinique El Rapha (2016-présent); Centre Diagnostic de Libreville (consultations)',
+      facilities: { connect: [{ id: polycliniqueElRapha.id }, { id: centreDiagnostic.id }] },
+    },
+  });
+
+  // Docteur 9: Dr Kedy — Ophtalmologue
+  const doctor9 = await prisma.user.create({
+    data: {
+      email: 'dr.kedy@sante.ga',
+      password: passwordHash,
+      role: 'DOCTOR',
+      fullName: 'Dr Kedy',
+      city: 'Libreville',
+      sex: 'M',
+      birthdate: new Date('1986-10-03'),
+      phone: '+241 07 90 12 34',
+      emailVerified: true,
+      avatarUrl: 'https://i.pravatar.cc/150?img=17',
+    },
+  });
+
+  await prisma.doctorProfile.create({
+    data: {
+      userId: doctor9.id,
+      specialty: 'Ophtalmologie',
+      hospitalType: 'CHU',
+      address: 'Boulevard Triomphal Omar Bongo',
+      city: 'Libreville',
+      consultationPrice: 25000,
+      presentation: 'Ophtalmologue spécialisé en chirurgie de la cataracte, glaucome et pathologies de la rétine. Équipé des dernières technologies d\'imagerie oculaire.',
+      formations: 'Doctorat en Médecine (USS Libreville); DES Ophtalmologie (Lyon); Formation chirurgie vitréo-rétinienne',
+      experiences: 'Hôpital Sino-Gabonais (2015-présent) — Chef de service Ophtalmologie; Polyclinique Tsitse (consultations)',
+      facilities: { connect: [{ id: hopitalSinoGabonais.id }, { id: polycliniqueTsitse.id }] },
+    },
+  });
+
+  // Docteur 10: Dr Nesta — Médecin Généraliste
+  const doctor10 = await prisma.user.create({
+    data: {
+      email: 'dr.nesta@sante.ga',
+      password: passwordHash,
+      role: 'DOCTOR',
+      fullName: 'Dr Nesta',
+      city: 'Libreville',
+      sex: 'F',
+      birthdate: new Date('1990-07-14'),
+      phone: '+241 07 01 23 45',
+      emailVerified: true,
+      avatarUrl: 'https://i.pravatar.cc/150?img=6',
+    },
+  });
+
+  await prisma.doctorProfile.create({
+    data: {
+      userId: doctor10.id,
       specialty: 'Médecine Générale',
-      hospitalType: 'Centre',
-      address: '4 place Bellecour',
-      city: 'Lyon',
-      presentation: 'Médecin généraliste orientée médecine préventive et santé de la femme. Suivi gynécologique, contraception, dépistage.',
-      formations: 'DES Médecine Générale (Lyon 1); DIU Gynécologie pour le médecin généraliste; Formation IVG médicamenteuse',
-      experiences: 'Centre Médical Bellecour (2017-présent); Planning Familial Lyon (consultations vacations)',
-      facilities: {
-        connect: [{ id: centreLyon.id }],
-      },
+      hospitalType: 'Polyclinique',
+      address: 'Quartier Lalala',
+      city: 'Libreville',
+      consultationPrice: 15000,
+      presentation: 'Médecin généraliste jeune et dynamique, orientée médecine préventive et santé communautaire. Suivi de patients de tous âges, téléconsultation disponible.',
+      formations: 'Doctorat en Médecine (USS Libreville); Formation télémédecine; DU Santé publique',
+      experiences: 'Polyclinique Tsitse (2018-présent); Campagnes de vaccination MSF (2019-2020)',
+      facilities: { connect: [{ id: polycliniqueTsitse.id }, { id: polycliniqueElRapha.id }] },
     },
   });
 
@@ -432,17 +622,17 @@ async function main() {
   // ========================================
   console.log('👔 Création des gestionnaires d\'établissement...');
 
-  // Gestionnaire 1: CHU Saint-Louis (peut gérer tous les docteurs du CHU)
+  // Gestionnaire 1: CHU de Libreville
   const manager1User = await prisma.user.create({
     data: {
-      email: 'manager.chu@sante.fr',
+      email: 'manager.chu@sante.ga',
       password: passwordHash,
       role: 'FACILITY_MANAGER',
-      fullName: 'Marie Gestionnaire',
-      city: 'Paris',
+      fullName: 'Aimée Ndong',
+      city: 'Libreville',
       sex: 'F',
       birthdate: new Date('1975-05-10'),
-      phone: '+33 6 11 22 33 44',
+      phone: '+241 07 11 22 33',
       emailVerified: true,
     },
   });
@@ -450,22 +640,22 @@ async function main() {
   await prisma.facilityManager.create({
     data: {
       userId: manager1User.id,
-      facilityId: chuParis.id,
-      managedDoctorIds: [], // Gère tous les docteurs du CHU via la facility
+      facilityId: chuLibreville.id,
+      managedDoctorIds: [],
     },
   });
 
-  // Gestionnaire 2: Clinique Cardio Paris avec override individuel
+  // Gestionnaire 2: Chambrier Polyclinic
   const manager2User = await prisma.user.create({
     data: {
-      email: 'manager.multi@sante.fr',
+      email: 'manager.chambrier@sante.ga',
       password: passwordHash,
       role: 'FACILITY_MANAGER',
-      fullName: 'Pierre Multi-Clinique',
-      city: 'Paris',
+      fullName: 'Serge Bourobou',
+      city: 'Libreville',
       sex: 'M',
       birthdate: new Date('1980-09-22'),
-      phone: '+33 6 22 33 44 55',
+      phone: '+241 07 22 33 44',
       emailVerified: true,
     },
   });
@@ -473,8 +663,8 @@ async function main() {
   await prisma.facilityManager.create({
     data: {
       userId: manager2User.id,
-      facilityId: cliniqueParis.id,
-      managedDoctorIds: [doctor4.id], // Gère clinique + Dr Dubois en override
+      facilityId: polycliniqueChambrier.id,
+      managedDoctorIds: [doctor3.id],
     },
   });
 
@@ -641,7 +831,7 @@ async function main() {
     },
   });
 
-  const globalUrgence = await prisma.appointmentKind.create({
+  void await prisma.appointmentKind.create({
     data: {
       name: 'Urgence',
       description: 'Consultation urgente même jour',
@@ -665,7 +855,7 @@ async function main() {
     },
   });
 
-  const cardioHolter = await prisma.appointmentKind.create({
+  void await prisma.appointmentKind.create({
     data: {
       name: 'Pose Holter ECG',
       description: 'Installation appareil Holter 24h - 15 min',
@@ -707,7 +897,7 @@ async function main() {
     },
   });
 
-  const pediatrieVaccin = await prisma.appointmentKind.create({
+  void await prisma.appointmentKind.create({
     data: {
       name: 'Vaccination',
       description: 'Séance de vaccination - 15 min',
@@ -1316,10 +1506,8 @@ async function main() {
   console.log('📁 Création des dossiers patients complets...');
 
   // Sélection de patients pour le dossier complet
-  const patientBernard = patients[0]; // Marie Dubois
-  const patientMartin = patients[1];  // Jean Martin
-  const patientLemoine = patients[2]; // Sophie Lemoine
-  const patientDurand = patients[3];  // Pierre Durand
+  const patientBernard = patients[0]; // Sylvie Moussavou
+  const patientMartin = patients[1];  // Jean-Baptiste Nzoghe
 
   // ---- ANTÉCÉDENTS MÉDICAUX ----
   // Patient Bernard (Marie Dubois)
@@ -1444,8 +1632,8 @@ async function main() {
         injectionSite: 'Bras gauche',
         administeredAt: new Date('2024-10-04'),
         nextDoseAt: new Date('2025-10-01'),
-        administeredBy: 'Dr Dupont',
-        facilityName: 'Clinique Cardio Paris',
+        administeredBy: 'Dr Rahandi Chambrier',
+        facilityName: 'Chambrier Polyclinic',
       },
       {
         patientId: patientBernard.id,
@@ -1731,7 +1919,7 @@ async function main() {
         interpretation: 'Légèrement élevé',
         isAbnormal: true,
         resultDate: new Date('2024-12-10'),
-        labName: 'Laboratoire BioMédical Paris',
+        labName: 'Centre Diagnostic de Libreville',
       },
       {
         patientId: patientBernard.id,
@@ -1744,7 +1932,7 @@ async function main() {
         normalRange: '< 2.0',
         isAbnormal: true,
         resultDate: new Date('2024-12-10'),
-        labName: 'Laboratoire BioMédical Paris',
+        labName: 'Centre Diagnostic de Libreville',
       },
       {
         patientId: patientBernard.id,
@@ -1757,7 +1945,7 @@ async function main() {
         normalRange: '< 1.0',
         isAbnormal: true,
         resultDate: new Date('2024-12-10'),
-        labName: 'Laboratoire BioMédical Paris',
+        labName: 'Centre Diagnostic de Libreville',
       },
       {
         patientId: patientBernard.id,
@@ -1771,7 +1959,7 @@ async function main() {
         interpretation: 'Normal',
         isAbnormal: false,
         resultDate: new Date('2024-11-20'),
-        labName: 'Laboratoire BioMédical Paris',
+        labName: 'Centre Diagnostic de Libreville',
       },
       {
         patientId: patientBernard.id,
@@ -1783,7 +1971,7 @@ async function main() {
         interpretation: 'Pas d\'anomalie',
         isAbnormal: false,
         resultDate: new Date('2024-11-20'),
-        labName: 'Laboratoire BioMédical Paris',
+        labName: 'Centre Diagnostic de Libreville',
       },
     ],
   });
@@ -1793,27 +1981,27 @@ async function main() {
     data: [
       {
         patientId: patientBernard.id,
-        fullName: 'Pierre Dubois',
+        fullName: 'Hervé Moussavou',
         relationship: 'Conjoint',
-        phone: '06 12 34 56 78',
-        email: 'pierre.dubois@email.fr',
+        phone: '+241 07 52 34 87',
+        email: 'herve.moussavou@email.ga',
         isPrimary: true,
         priority: 1,
       },
       {
         patientId: patientBernard.id,
-        fullName: 'Sophie Dubois',
-        relationship: 'Fille',
-        phone: '06 98 76 54 32',
-        email: 'sophie.dubois@email.fr',
+        fullName: 'Laure Moussavou',
+        relationship: 'Sœur',
+        phone: '+241 07 63 21 45',
+        email: 'laure.moussavou@email.ga',
         isPrimary: false,
         priority: 2,
       },
       {
         patientId: patientMartin.id,
-        fullName: 'Claudine Martin',
+        fullName: 'Claudine Nzoghe',
         relationship: 'Épouse',
-        phone: '06 11 22 33 44',
+        phone: '+241 07 74 56 32',
         isPrimary: true,
         priority: 1,
       },
@@ -2095,7 +2283,7 @@ async function main() {
           vaccineType: 'ARNm',
           doseNumber: 3,
           administeredAt: new Date('2022-01-15'),
-          administeredBy: 'Centre de vaccination Paris',
+          administeredBy: 'Centre de vaccination de Libreville',
           lotNumber: 'FD8891',
           nextDoseAt: null,
           notes: 'Rappel effectué - schéma vaccinal complet',
@@ -2359,7 +2547,7 @@ async function main() {
           unit: 'multiple',
           isAbnormal: false,
           resultDate: new Date('2025-11-10'),
-          labName: 'Laboratoire Cerba',
+          labName: 'Laboratoire Biomédical Gabon',
           notes: 'Bilan sanguin normal',
         },
         {
@@ -2376,7 +2564,7 @@ async function main() {
           unit: 'multiple',
           isAbnormal: false,
           resultDate: new Date('2025-11-10'),
-          labName: 'Laboratoire Cerba',
+          labName: 'Laboratoire Biomédical Gabon',
           notes: 'Bilan lipidique bien contrôlé sous statine',
         },
         {
@@ -2389,7 +2577,7 @@ async function main() {
           normalRange: '<7.0',
           isAbnormal: false,
           resultDate: new Date('2025-11-10'),
-          labName: 'Laboratoire Cerba',
+          labName: 'Laboratoire Biomédical Gabon',
           notes: 'Diabète bien équilibré',
         },
         {
@@ -2402,7 +2590,7 @@ async function main() {
           normalRange: '62-106',
           isAbnormal: false,
           resultDate: new Date('2025-11-10'),
-          labName: 'Laboratoire Cerba',
+          labName: 'Laboratoire Biomédical Gabon',
           notes: 'Fonction rénale normale (DFG > 90 mL/min)',
         },
         {
@@ -2415,7 +2603,7 @@ async function main() {
           normalRange: '0.70-1.10',
           isAbnormal: true,
           resultDate: new Date('2025-11-10'),
-          labName: 'Laboratoire Cerba',
+          labName: 'Laboratoire Biomédical Gabon',
           notes: 'Légèrement élevée mais HbA1c satisfaisante',
         },
       ],
@@ -2509,18 +2697,20 @@ async function main() {
 
   console.log('🔑 Comptes de test (mot de passe: password123):');
   console.log('   Patients:');
-  console.log('     - marie.dubois@email.fr');
-  console.log('     - jean.martin@email.fr');
-  console.log('     - sophie.lemoine@email.fr');
+  console.log('     - sylvie.moussavou@email.ga');
+  console.log('     - jb.nzoghe@email.ga');
+  console.log('     - carine.obame@email.ga');
   console.log('   Médecins:');
-  console.log('     - dr.amelie.dupont@sante.fr (Cardiologue Paris/Clinique)');
-  console.log('     - dr.benoit.martin@sante.fr (Dermatologue Lyon)');
-  console.log('     - dr.jean.rousseau@sante.fr (Cardiologue CHU Paris)');
-  console.log('     - dr.claire.dubois@sante.fr (Généraliste Marseille)');
-  console.log('     - dr.sophie.lefevre@sante.fr (Pédiatre CHU Paris)');
-  console.log('     - dr.marc.bernard@sante.fr (Dermatologue CHU Paris)');
-  console.log('     - dr.paul.morel@sante.fr (Cardiologue Clinique Paris)');
-  console.log('     - dr.julie.garcia@sante.fr (Généraliste Lyon)\n');
+  console.log('     - dr.rahandi.chambrier@sante.ga (Cardiologue)');
+  console.log('     - dr.marceline.alawe@sante.ga (Gynécologue)');
+  console.log('     - dr.urbain.alawoe@sante.ga (Généraliste Owendo)');
+  console.log('     - pr.minkobame@sante.ga (Neurologue)');
+  console.log('     - dr.carole@sante.ga (Pédiatre)');
+  console.log('     - dr.gilles@sante.ga (Chirurgien)');
+  console.log('     - dr.marius@sante.ga (Interniste)');
+  console.log('     - dr.chitou@sante.ga (Dermatologue)');
+  console.log('     - dr.kedy@sante.ga (Ophtalmologue)');
+  console.log('     - dr.nesta@sante.ga (Généraliste)\n');
 }
 
 main()
