@@ -503,7 +503,7 @@ export class AdminService {
         doctorProfile: {
           include: {
             facilities: { select: { id: true, name: true, type: true, city: true } },
-            reviews: { select: { id: true, rating: true, comment: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 5 },
+            reviews: { select: { id: true, overallRating: true, comment: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 5 },
           },
         },
         _count: { select: { appointments: true } } as any,
