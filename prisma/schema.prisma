@@ -153,6 +153,10 @@ model Appointment {
   videoStartedAt   DateTime? // Début de la session vidéo
   videoEndedAt     DateTime? // Fin de la session vidéo
 
+  // Établissement choisi lors de la prise de RDV
+  facilityId    String?
+  facility      Facility?           @relation(fields: [facilityId], references: [id])
+
   slot          AvailabilitySlot    @relation(fields: [slotId], references: [id], onDelete: Cascade)
   patient       User                @relation("PatientAppointments", fields: [patientId], references: [id])
   transactions  Transaction[]
@@ -757,9 +761,10 @@ model Facility {
   updatedAt   DateTime  @updatedAt
 
   // many-to-many implicite : côté Facility on doit garder juste Facility[]
-  doctors     DoctorProfile[]  @relation("DoctorFacilities")
-  managers    FacilityManager[]
-  contracts   Contract[]       @relation("FacilityContracts")
+  doctors      DoctorProfile[]  @relation("DoctorFacilities")
+  managers     FacilityManager[]
+  contracts    Contract[]       @relation("FacilityContracts")
+  appointments Appointment[]
 }
 
 enum FacilityType {

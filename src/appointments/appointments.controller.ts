@@ -91,6 +91,7 @@ export class AppointmentsController {
       doctorId?: string;
       kindId?: string;
       notes?: string;
+      facilityId?: string;
       beneficiaryName?: string;
       beneficiaryPhone?: string;
     },
@@ -110,6 +111,7 @@ export class AppointmentsController {
         kindId: dto.kindId,
         notes: dto.notes,
         doctorId,
+        facilityId: dto.facilityId,
         beneficiaryName: dto.beneficiaryName,
         beneficiaryPhone: dto.beneficiaryPhone,
       });

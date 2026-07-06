@@ -202,6 +202,30 @@ export class AdminController {
     return this.adminService.getFacilityById(id);
   }
 
+  @Post('facilities')
+  async createFacility(@Req() req, @Body() body: any) {
+    requireAdminWrite(req.user);
+    return this.adminService.createFacility(body);
+  }
+
+  @Patch('facilities/:id')
+  async updateFacility(@Req() req, @Param('id') id: string, @Body() body: any) {
+    requireAdminWrite(req.user);
+    return this.adminService.updateFacility(id, body);
+  }
+
+  @Delete('facilities/:id')
+  async deleteFacility(@Req() req, @Param('id') id: string) {
+    requireAdminWrite(req.user);
+    return this.adminService.deleteFacility(id);
+  }
+
+  @Get('doctors/:id')
+  async getDoctor(@Req() req, @Param('id') id: string) {
+    requireAdminAccess(req.user);
+    return this.adminService.getDoctorById(id);
+  }
+
   // ─── Audit logs ───────────────────────────────────────────────────────────
 
   @Get('audit')

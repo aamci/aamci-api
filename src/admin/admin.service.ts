@@ -488,6 +488,61 @@ export class AdminService {
     return facility;
   }
 
+  async getDoctorById(id: string) {
+    const doctor = await this.prisma.user.findUnique({
+      where: { id, role: 'DOCTOR' },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        phone: true,
+        city: true,
+        avatarUrl: true,
+        isActive: true,
+        createdAt: true,
+        doctorProfile: {
+          include: {
+            facilities: { select: { id: true, name: true, type: true, city: true } },
+            reviews: { select: { id: true, rating: true, comment: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 5 },
+          },
+        },
+        _count: { select: { appointments: true } } as any,
+      } as any,
+    });
+    if (!doctor) throw new NotFoundException('Médecin introuvable');
+    return doctor;
+  }
+
+  async createFacility(data: {
+    name: string;
+    type: string;
+    description?: string;
+    address?: string;
+    city?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+  }) {
+    return this.prisma.facility.create({ data: data as any });
+  }
+
+  async updateFacility(id: string, data: {
+    name?: string;
+    type?: string;
+    description?: string;
+    address?: string;
+    city?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+  }) {
+    return this.prisma.facility.update({ where: { id }, data: data as any });
+  }
+
+  async deleteFacility(id: string) {
+    return this.prisma.facility.delete({ where: { id } });
+  }
+
   // ─── Audit logs ───────────────────────────────────────────────────────────
 
   async getAuditLogs(params: { page?: number; limit?: number; adminId?: string; action?: string }) {

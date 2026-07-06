@@ -127,6 +127,7 @@ export class AppointmentsService {
     kindId?: string;
     notes?: string;
     doctorId?: string;
+    facilityId?: string;
     beneficiaryName?: string;
     beneficiaryPhone?: string;
   }) {
@@ -231,6 +232,7 @@ export class AppointmentsService {
         type: 'CONSULTATION',
         beneficiaryName: data.beneficiaryName,
         beneficiaryPhone: data.beneficiaryPhone,
+        facilityId: data.facilityId || null,
       },
       include: {
         slot: true,
