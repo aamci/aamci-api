@@ -14,7 +14,7 @@ export class SearchService {
     availableIn?: string,
     video?: string,
   ) {
-    const where: any = { role: 'DOCTOR' };
+    const where: any = { role: 'DOCTOR', isActive: true };
 
     if (q) {
       where.OR = [
