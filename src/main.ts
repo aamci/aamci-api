@@ -17,9 +17,9 @@ async function bootstrap() {
     'http://localhost:53785',
     'http://localhost:3001',
     // Production ibogha.elowe.fr
-    'https://patient.ibogha.elowe.fr',
-    'https://pro.ibogha.elowe.fr',
-    'https://admin.ibogha.elowe.fr',
+    'https://patient.ibogha241.ga',
+    'https://pro.ibogha241.ga',
+    'https://admin.ibogha241.ga',
     // Preprod ibogha.elowe.fr
     'https://preprod-patient.ibogha.elowe.fr',
     'https://preprod-pro.ibogha.elowe.fr',
@@ -32,7 +32,6 @@ async function bootstrap() {
     'http://patient.38.247.138.247.nip.io',
     'http://pro.38.247.138.247.nip.io',
     'http://admin.38.247.138.247.nip.io',
-    ...extraOrigins,
   ];
 
   app.useWebSocketAdapter(new IoAdapter(app));
