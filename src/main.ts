@@ -8,6 +8,10 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
+  const extraOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
+    : [];
+
   const origins = [
     'http://localhost:3000',
     'http://localhost:53785',
@@ -28,6 +32,7 @@ async function bootstrap() {
     'http://patient.38.247.138.247.nip.io',
     'http://pro.38.247.138.247.nip.io',
     'http://admin.38.247.138.247.nip.io',
+    ...extraOrigins,
   ];
 
   app.useWebSocketAdapter(new IoAdapter(app));
