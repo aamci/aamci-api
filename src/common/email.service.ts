@@ -25,8 +25,20 @@ export class EmailService {
     }
   }
 
-  async sendVerificationEmail(email: string, token: string, fullName?: string) {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  private getFrontendUrl(role?: string): string {
+    const PRO_ROLES = ['DOCTOR', 'SECRETARY', 'FACILITY_MANAGER', 'PHARMACY', 'HOSPITAL'];
+    const ADMIN_ROLES = ['ADMIN', 'ADMIN_READ', 'ADMIN_WRITE', 'GUEST'];
+    if (role && ADMIN_ROLES.includes(role)) {
+      return process.env.FRONTEND_ADMIN_URL || process.env.FRONTEND_PRO_URL || 'http://localhost:3003';
+    }
+    if (role && PRO_ROLES.includes(role)) {
+      return process.env.FRONTEND_PRO_URL || 'http://localhost:3002';
+    }
+    return process.env.FRONTEND_URL || 'http://localhost:3001';
+  }
+
+  async sendVerificationEmail(email: string, token: string, fullName?: string, role?: string) {
+    const frontendUrl = this.getFrontendUrl(role);
     const verificationUrl = `${frontendUrl}/auth/verify-email?token=${token}`;
 
     const mailOptions = {
@@ -140,8 +152,8 @@ export class EmailService {
     }
   }
 
-  async sendPasswordResetEmail(email: string, token: string, fullName?: string) {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  async sendPasswordResetEmail(email: string, token: string, fullName?: string, role?: string) {
+    const frontendUrl = this.getFrontendUrl(role);
     const resetUrl = `${frontendUrl}/auth/reset-password?token=${token}`;
 
     const mailOptions = {

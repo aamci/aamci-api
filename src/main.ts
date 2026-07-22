@@ -20,7 +20,11 @@ async function bootstrap() {
     'https://preprod-patient.ibogha.elowe.fr',
     'https://preprod-pro.ibogha.elowe.fr',
     'https://preprod-admin.ibogha.elowe.fr',
-    // Staging nip.io (IP temporaire sans domaine)
+    // Production ibogha241.ga
+    'https://patient.ibogha241.ga',
+    'https://pro.ibogha241.ga',
+    'https://admin.ibogha241.ga',
+    // Staging nip.io (fallback)
     'http://patient.38.247.138.247.nip.io',
     'http://pro.38.247.138.247.nip.io',
     'http://admin.38.247.138.247.nip.io',

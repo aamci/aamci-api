@@ -43,7 +43,7 @@ export class AuthService {
 
     // Envoyer l'email de vérification
     try {
-      await this.email.sendVerificationEmail(email, verificationToken, user.fullName || undefined);
+      await this.email.sendVerificationEmail(email, verificationToken, user.fullName || undefined, user.role);
     } catch (error) {
       // Log l'erreur mais ne bloque pas l'inscription
       console.error('Failed to send verification email:', error);
@@ -133,7 +133,7 @@ export class AuthService {
     });
 
     // Renvoyer l'email
-    await this.email.sendVerificationEmail(email, verificationToken, user.fullName || undefined);
+    await this.email.sendVerificationEmail(email, verificationToken, user.fullName || undefined, user.role);
 
     return {
       message: 'Verification email sent. Please check your inbox.',
@@ -184,7 +184,7 @@ export class AuthService {
     });
 
     try {
-      await this.email.sendPasswordResetEmail(email, resetToken, user.fullName || undefined);
+      await this.email.sendPasswordResetEmail(email, resetToken, user.fullName || undefined, user.role);
     } catch (error) {
       console.error('Failed to send password reset email:', error);
     }

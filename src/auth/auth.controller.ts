@@ -89,13 +89,8 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   async googleAuthCallback(@Req() req: any, @Res() res: Response) {
     const { access_token } = await this.auth.oauthLogin(req.user);
-
-    // Set httpOnly cookie
-    this.setAuthCookie(res, access_token);
-
-    // Redirect to frontend with success
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    res.redirect(`${frontendUrl}/auth/oauth-success`);
+    res.redirect(`${frontendUrl}/auth/oauth-success?token=${access_token}`);
   }
 
   // Facebook OAuth
@@ -109,13 +104,8 @@ export class AuthController {
   @UseGuards(FacebookAuthGuard)
   async facebookAuthCallback(@Req() req: any, @Res() res: Response) {
     const { access_token } = await this.auth.oauthLogin(req.user);
-
-    // Set httpOnly cookie
-    this.setAuthCookie(res, access_token);
-
-    // Redirect to frontend with success
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    res.redirect(`${frontendUrl}/auth/oauth-success`);
+    res.redirect(`${frontendUrl}/auth/oauth-success?token=${access_token}`);
   }
 
   // Email Verification
