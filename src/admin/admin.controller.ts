@@ -220,6 +220,18 @@ export class AdminController {
     return this.adminService.deleteFacility(id);
   }
 
+  @Post('doctors/:doctorId/facilities/:facilityId')
+  async addFacilityToDoctor(@Req() req, @Param('doctorId') doctorId: string, @Param('facilityId') facilityId: string) {
+    requireAdminWrite(req.user);
+    return this.adminService.addFacilityToDoctor(doctorId, facilityId);
+  }
+
+  @Delete('doctors/:doctorId/facilities/:facilityId')
+  async removeFacilityFromDoctor(@Req() req, @Param('doctorId') doctorId: string, @Param('facilityId') facilityId: string) {
+    requireAdminWrite(req.user);
+    return this.adminService.removeFacilityFromDoctor(doctorId, facilityId);
+  }
+
   @Get('doctors/:id')
   async getDoctor(@Req() req, @Param('id') id: string) {
     requireAdminAccess(req.user);

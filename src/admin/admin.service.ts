@@ -543,6 +543,26 @@ export class AdminService {
     return this.prisma.facility.delete({ where: { id } });
   }
 
+  async addFacilityToDoctor(doctorUserId: string, facilityId: string) {
+    const profile = await this.prisma.doctorProfile.findUnique({ where: { userId: doctorUserId } });
+    if (!profile) throw new NotFoundException('Profil médecin introuvable');
+    return this.prisma.doctorProfile.update({
+      where: { userId: doctorUserId },
+      data: { facilities: { connect: { id: facilityId } } },
+      include: { facilities: { select: { id: true, name: true, type: true, city: true } } },
+    });
+  }
+
+  async removeFacilityFromDoctor(doctorUserId: string, facilityId: string) {
+    const profile = await this.prisma.doctorProfile.findUnique({ where: { userId: doctorUserId } });
+    if (!profile) throw new NotFoundException('Profil médecin introuvable');
+    return this.prisma.doctorProfile.update({
+      where: { userId: doctorUserId },
+      data: { facilities: { disconnect: { id: facilityId } } },
+      include: { facilities: { select: { id: true, name: true, type: true, city: true } } },
+    });
+  }
+
   // ─── Audit logs ───────────────────────────────────────────────────────────
 
   async getAuditLogs(params: { page?: number; limit?: number; adminId?: string; action?: string }) {
