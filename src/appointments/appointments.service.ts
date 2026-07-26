@@ -3,6 +3,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { PrismaService } from '../common/prisma.service';
 import { DoctorAbsencesService } from '../doctor-absences/doctor-absences.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { WaitlistService } from '../waitlist/waitlist.service';
 
 type AppointmentStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'NO_SHOW' | 'COMPLETED';
 
@@ -24,6 +25,7 @@ export class AppointmentsService {
     private prisma: PrismaService,
     private doctorAbsencesService: DoctorAbsencesService,
     private notificationsService: NotificationsService,
+    private waitlistService: WaitlistService,
   ) {}
 
   // Helper pour enregistrer l'historique
@@ -294,6 +296,48 @@ export class AppointmentsService {
     return appointment;
   }
 
+  async createRecurringSeries(
+    baseData: Parameters<typeof this.createWithNewSlot>[0],
+    recurrence: { frequency: 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY'; count: number },
+  ) {
+    const groupId = crypto.randomUUID();
+    const count = Math.min(recurrence.count, 52); // max 52 occurrences
+    const results: any[] = [];
+
+    const startDate = new Date(baseData.slotStart);
+    const endDate   = new Date(baseData.slotEnd);
+    const durationMs = endDate.getTime() - startDate.getTime();
+
+    for (let i = 0; i < count; i++) {
+      const offsetDays =
+        recurrence.frequency === 'WEEKLY'    ? i * 7  :
+        recurrence.frequency === 'BIWEEKLY'  ? i * 14 :
+        recurrence.frequency === 'MONTHLY'   ? i * 30 : i * 7;
+
+      const slotStart = new Date(startDate.getTime() + offsetDays * 86400000);
+      const slotEnd   = new Date(slotStart.getTime() + durationMs);
+
+      try {
+        const appt = await this.createWithNewSlot({
+          ...baseData,
+          slotStart: slotStart.toISOString(),
+          slotEnd:   slotEnd.toISOString(),
+        });
+        // Tag with recurrence group
+        const tagged = await this.prisma.appointment.update({
+          where: { id: appt.id },
+          data: { recurrenceGroupId: groupId, recurrenceIndex: i + 1 },
+          include: { slot: true, patient: { select: PATIENT_SELECT }, kind: true },
+        });
+        results.push(tagged);
+      } catch {
+        // Skip occurrences that conflict; don't abort the whole series
+      }
+    }
+
+    return { recurrenceGroupId: groupId, appointments: results };
+  }
+
   // ✅ DOCTOR / HOSPITAL / SECRETARY change le statut d'un RDV sur le slot du médecin
   async updateStatusAsOwner(appointmentId: string, requesterId: string, status: AppointmentStatus, role?: string) {
     const appt = await this.prisma.appointment.findUnique({
@@ -353,6 +397,8 @@ export class AppointmentsService {
           appointmentId,
           new Date(appt.slot.start),
         );
+        // Notify next patient on waitlist for this doctor/day
+        this.waitlistService.notifyNextOnWaitlist(appt.slot.ownerId, new Date(appt.slot.start)).catch(() => {});
       }
     } catch (error) {
       console.error('Failed to send status change notification:', error);
@@ -635,6 +681,60 @@ export class AppointmentsService {
     return updatedAppointment;
   }
 
+  // Historique global pour un médecin ou gestionnaire
+  async getGlobalHistory(userId: string, role: string, params: {
+    page?: number; limit?: number; action?: string; doctorIds?: string[];
+  }) {
+    const page  = Math.max(1, params.page ?? 1);
+    const limit = Math.min(100, Math.max(1, params.limit ?? 30));
+    const skip  = (page - 1) * limit;
+
+    let ownerIds: string[];
+    if (role === 'FACILITY_MANAGER') {
+      if (params.doctorIds?.length) {
+        ownerIds = params.doctorIds;
+      } else {
+        // Auto-resolve all doctors managed by this facility manager
+        const manager = await this.prisma.facilityManager.findUnique({
+          where: { userId },
+          include: { facility: { include: { doctors: { select: { userId: true } } } } },
+        });
+        const facilityIds = manager?.facility.doctors.map(d => d.userId) ?? [];
+        const overrideIds = (manager?.managedDoctorIds as string[]) ?? [];
+        ownerIds = [...new Set([...facilityIds, ...overrideIds])];
+        if (!ownerIds.length) ownerIds = [userId];
+      }
+    } else {
+      ownerIds = [userId];
+    }
+
+    const histWhere: any = {
+      appointment: { slot: { ownerId: { in: ownerIds }, ownerType: 'DOCTOR' } },
+    };
+    if (params.action) histWhere.action = params.action;
+
+    const [entries, total] = await Promise.all([
+      this.prisma.appointmentHistory.findMany({
+        where: histWhere,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, fullName: true, email: true, role: true } },
+          appointment: {
+            include: {
+              patient: { select: { id: true, fullName: true, email: true } },
+              slot:    { select: { startTime: true, ownerId: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.appointmentHistory.count({ where: histWhere }),
+    ]);
+
+    return { entries, total, page, limit, pages: Math.ceil(total / limit) };
+  }
+
   // Récupérer l'historique d'un rendez-vous
   async getHistory(appointmentId: string) {
     return this.prisma.appointmentHistory.findMany({
@@ -774,6 +874,32 @@ export class AppointmentsService {
       { videoStartedAt: appt.videoStartedAt },
       { videoEndedAt: updateData.videoEndedAt, durationMinutes: duration },
       `Session vidéo terminée (durée: ${duration} minutes)`
+    );
+
+    return updated;
+  }
+
+  async checkIn(appointmentId: string, userId: string) {
+    const appt = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { slot: true },
+    });
+    if (!appt) throw new NotFoundException('Rendez-vous introuvable');
+
+    const isPatient = appt.patientId === userId;
+    const isDoctor  = appt.slot.ownerId === userId;
+    if (!isPatient && !isDoctor) throw new ForbiddenException('Accès refusé');
+    if (appt.checkedInAt) return appt; // already checked in
+
+    const updated = await this.prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { checkedInAt: new Date() },
+      include: { slot: true, patient: { select: PATIENT_SELECT }, kind: true },
+    });
+
+    await this.logHistory(
+      appointmentId, 'CHECKED_IN', userId, {}, { checkedInAt: updated.checkedInAt },
+      `Patient arrivé (check-in confirmé)`
     );
 
     return updated;

@@ -6,6 +6,7 @@ import { NotificationsGateway } from './notifications.gateway';
 import { AppointmentReminderScheduler } from './appointment-reminder.scheduler';
 import { PrismaService } from '../common/prisma.service';
 import { EmailService } from '../common/email.service';
+import { SmsService } from '../common/sms.service';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { EmailService } from '../common/email.service';
     AppointmentReminderScheduler,
     PrismaService,
     EmailService,
+    SmsService,
   ],
   exports: [NotificationsService, NotificationsGateway],
 })

@@ -888,4 +888,30 @@ export class EmailService {
     }
   }
 
+  async sendRaw(to: string, subject: string, htmlBody: string) {
+    const mailOptions = {
+      from: `"Ibogha Santé" <${process.env.SMTP_USER || 'noreply@ibogha241.ga'}>`,
+      to,
+      subject,
+      html: `
+        <html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">
+          <div style="background:linear-gradient(135deg,#0d9488,#0891b2);padding:20px;border-radius:12px 12px 0 0;text-align:center;">
+            <h1 style="color:white;margin:0;">Ibogha 241</h1>
+          </div>
+          <div style="background:#f8fafc;padding:30px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;">
+            ${htmlBody}
+          </div>
+        </body></html>
+      `,
+    };
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Raw email sent to ${to}: ${info.messageId}`);
+      return { success: true };
+    } catch (error) {
+      this.logger.error(`Failed to send raw email to ${to}:`, error);
+      return { success: false };
+    }
+  }
+
 }

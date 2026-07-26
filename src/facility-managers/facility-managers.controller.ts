@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Req,
+  Query,
 } from '@nestjs/common';
 import { FacilityManagersService } from './facility-managers.service';
 import { CreateFacilityManagerDto } from './dto/create-facility-manager.dto';
@@ -16,11 +17,15 @@ import { AssignDoctorDto } from './dto/assign-doctor.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { EmailService } from '../common/email.service';
 
 @Controller('facility-managers')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class FacilityManagersController {
-  constructor(private readonly facilityManagersService: FacilityManagersService) {}
+  constructor(
+    private readonly facilityManagersService: FacilityManagersService,
+    private readonly emailService: EmailService,
+  ) {}
 
   @Post()
   @Roles('ADMIN')
@@ -93,5 +98,24 @@ export class FacilityManagersController {
   removeDoctor(@Req() req: any, @Param('doctorId') doctorId: string) {
     const userId = req.user?.userId || req.user?.sub;
     return this.facilityManagersService.removeDoctor(userId, doctorId);
+  }
+
+  @Get('me/appointments')
+  @Roles('FACILITY_MANAGER')
+  getManagedAppointments(
+    @Req() req: any,
+    @Query('doctorId') doctorId?: string,
+    @Query('date') date?: string,
+    @Query('status') status?: string,
+  ) {
+    const userId = req.user?.userId || req.user?.sub;
+    return this.facilityManagersService.getManagedAppointments(userId, { doctorId, date, status });
+  }
+
+  @Post('me/appointments/:appointmentId/reminder')
+  @Roles('FACILITY_MANAGER')
+  sendReminder(@Req() req: any, @Param('appointmentId') appointmentId: string) {
+    const userId = req.user?.userId || req.user?.sub;
+    return this.facilityManagersService.sendAppointmentReminder(userId, appointmentId, this.emailService);
   }
 }

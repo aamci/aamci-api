@@ -51,6 +51,7 @@ import { TicketsModule } from './tickets/tickets.module';
 import { ReferralsModule } from './referrals/referrals.module';
 import { CorrespondencesModule } from './correspondences/correspondences.module';
 import { StorageModule } from './common/storage.module';
+import { WaitlistModule } from './waitlist/waitlist.module';
 
 @Module({
   imports: [
@@ -101,6 +102,7 @@ import { StorageModule } from './common/storage.module';
     TicketsModule,
     ReferralsModule,
     CorrespondencesModule,
+    WaitlistModule,
   ],
   controllers: [HealthController],
   providers: [

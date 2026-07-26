@@ -308,6 +308,70 @@ export class FacilityManagersService {
     });
   }
 
+  async getManagedAppointments(managerId: string, filters: {
+    doctorId?: string;
+    date?: string;
+    status?: string;
+  }) {
+    const doctors = await this.getManagedDoctors(managerId);
+    const doctorIds = filters.doctorId
+      ? doctors.filter(d => d.id === filters.doctorId).map(d => d.id)
+      : doctors.map(d => d.id);
+
+    const dateFilter: any = {};
+    if (filters.date) {
+      const d = new Date(filters.date);
+      const start = new Date(d); start.setHours(0, 0, 0, 0);
+      const end = new Date(d); end.setHours(23, 59, 59, 999);
+      dateFilter.slot = { startTime: { gte: start, lte: end } };
+    }
+
+    const statusFilter = filters.status ? { status: filters.status as any } : {};
+
+    return this.prisma.appointment.findMany({
+      where: {
+        slot: { ownerId: { in: doctorIds }, ownerType: 'DOCTOR' },
+        ...statusFilter,
+        ...(filters.date ? { slot: { ownerId: { in: doctorIds }, ownerType: 'DOCTOR', startTime: { gte: new Date(filters.date + 'T00:00:00'), lte: new Date(filters.date + 'T23:59:59') } } } : {}),
+      },
+      include: {
+        patient: { select: { id: true, fullName: true, email: true, phone: true, avatarUrl: true } },
+        slot: { select: { startTime: true, endTime: true, ownerId: true } },
+        kind: { select: { name: true, durationMins: true, isTelemedicine: true } },
+      },
+      orderBy: { slot: { startTime: 'asc' } },
+      take: 200,
+    });
+  }
+
+  async sendAppointmentReminder(managerId: string, appointmentId: string, emailService: any) {
+    const doctors = await this.getManagedDoctors(managerId);
+    const doctorIds = doctors.map(d => d.id);
+
+    const appt = await this.prisma.appointment.findFirst({
+      where: { id: appointmentId, slot: { ownerId: { in: doctorIds } } },
+      include: {
+        patient: { select: { fullName: true, email: true } },
+        slot: { select: { startTime: true, endTime: true, ownerId: true } },
+        kind: { select: { name: true } },
+      },
+    });
+    if (!appt) throw new Error('Rendez-vous introuvable ou non autorisé');
+
+    const doctor = doctors.find(d => d.id === appt.slot.ownerId);
+    await emailService.sendAppointmentReminder(
+      appt.patient.email,
+      {
+        patientName: appt.patient.fullName || 'Patient',
+        doctorName: doctor?.fullName || 'Médecin',
+        date: appt.slot.startTime.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        time: appt.slot.startTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        kindName: appt.kind?.name,
+      }
+    );
+    return { success: true };
+  }
+
   async canManageDoctor(managerId: string, doctorId: string): Promise<boolean> {
     const manager = await this.prisma.facilityManager.findUnique({
       where: { userId: managerId },

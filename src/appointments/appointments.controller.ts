@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AppointmentsService } from './appointments.service';
 import { JwtAuthGuard } from '../common/jwt.guard';
 
@@ -54,6 +54,24 @@ export class AppointmentsController {
     return result;
   }
 
+  @Get('history/global')
+  async getGlobalHistory(
+    @Req() req,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('action') action?: string,
+    @Query('doctorIds') doctorIds?: string,
+  ) {
+    const userId = req.user.userId;
+    const role   = req.user.role;
+    return this.svc.getGlobalHistory(userId, role, {
+      page:  page  ? Number(page)  : undefined,
+      limit: limit ? Number(limit) : undefined,
+      action,
+      doctorIds: doctorIds ? doctorIds.split(',') : undefined,
+    });
+  }
+
   @Get(':id/history')
   async getHistory(@Param('id') id: string) {
     return this.svc.getHistory(id);
@@ -63,6 +81,11 @@ export class AppointmentsController {
   async getById(@Param('id') id: string, @Req() req) {
     const userId = req.user.userId;
     return this.svc.findByIdForUser(id, userId);
+  }
+
+  @Post(':id/check-in')
+  async checkIn(@Param('id') id: string, @Req() req) {
+    return this.svc.checkIn(id, req.user.userId);
   }
 
   @Post(':id/start-video')
@@ -94,6 +117,7 @@ export class AppointmentsController {
       facilityId?: string;
       beneficiaryName?: string;
       beneficiaryPhone?: string;
+      recurrence?: { frequency: 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY'; count: number };
     },
     @Req() req: any
   ) {
@@ -102,9 +126,8 @@ export class AppointmentsController {
 
     // Si slotStart et slotEnd sont fournis, créer le slot à la volée
     if (dto.slotStart && dto.slotEnd) {
-      // DOCTOR → propre userId ; SECRETARY/PATIENT → doctorId du body
       const doctorId = role === 'DOCTOR' ? userId : dto.doctorId;
-      return this.svc.createWithNewSlot({
+      const basePayload = {
         patientId: dto.patientId || userId,
         slotStart: dto.slotStart,
         slotEnd: dto.slotEnd,
@@ -114,7 +137,13 @@ export class AppointmentsController {
         facilityId: dto.facilityId,
         beneficiaryName: dto.beneficiaryName,
         beneficiaryPhone: dto.beneficiaryPhone,
-      });
+      };
+
+      if (dto.recurrence && dto.recurrence.count > 1) {
+        return this.svc.createRecurringSeries(basePayload, dto.recurrence);
+      }
+
+      return this.svc.createWithNewSlot(basePayload);
     }
 
     // Sinon, utiliser le slotId existant

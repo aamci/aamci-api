@@ -18,8 +18,7 @@ import { UpdateAvailabilityRuleDto } from './dto/update-availability-rule.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { FacilityManagersService } from '../facility-managers/facility-managers.service';
 
-// To re-allow doctors to manage their own calendar, add 'DOCTOR' to this array.
-const CALENDAR_WRITE_ROLES = ['FACILITY_MANAGER', 'HOSPITAL'];
+const CALENDAR_WRITE_ROLES = ['DOCTOR', 'FACILITY_MANAGER', 'HOSPITAL'];
 
 @Controller('availability-rules')
 @UseGuards(JwtAuthGuard)

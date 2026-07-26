@@ -117,6 +117,10 @@ model User {
   correspondencesSent      MedicalCorrespondence[] @relation("CorrespondenceSender")
   correspondencesReceived  MedicalCorrespondence[] @relation("CorrespondenceRecipient")
   correspondencesAsPatient MedicalCorrespondence[] @relation("CorrespondencePatient")
+
+  // Liste d'attente
+  waitlistAsPatient        WaitlistEntry[]         @relation("WaitlistPatient")
+  waitlistAsDoctor         WaitlistEntry[]         @relation("WaitlistDoctor")
 }
 
 enum Role {
@@ -157,6 +161,13 @@ model Appointment {
   facilityId    String?
   facility      Facility?           @relation(fields: [facilityId], references: [id])
 
+  // Check-in patient
+  checkedInAt   DateTime?
+
+  // RDV récurrents
+  recurrenceGroupId String?
+  recurrenceIndex   Int?
+
   slot          AvailabilitySlot    @relation(fields: [slotId], references: [id], onDelete: Cascade)
   patient       User                @relation("PatientAppointments", fields: [patientId], references: [id])
   transactions  Transaction[]
@@ -165,6 +176,8 @@ model Appointment {
   notifications Notification[]
   review        DoctorReview?
   consultations Consultation[]
+
+  @@index([recurrenceGroupId])
 }
 
 enum AppointmentStatus {
@@ -1969,4 +1982,31 @@ enum CorrespondenceCategory {
   REPONSE_AVIS
   TRANSFERT
   AUTRE
+}
+
+// ─── Liste d'attente ──────────────────────────────────────────────────────────
+
+model WaitlistEntry {
+  id        String          @id @default(cuid())
+  doctorId  String
+  doctor    User            @relation("WaitlistDoctor", fields: [doctorId], references: [id], onDelete: Cascade)
+  patientId String
+  patient   User            @relation("WaitlistPatient", fields: [patientId], references: [id], onDelete: Cascade)
+  kindId    String?
+  date      DateTime        // Jour souhaité (heure ignorée)
+  position  Int             @default(0)
+  status    WaitlistStatus  @default(ACTIVE)
+  notifiedAt DateTime?
+  createdAt DateTime        @default(now())
+
+  @@index([doctorId, date])
+  @@index([patientId])
+  @@index([status])
+}
+
+enum WaitlistStatus {
+  ACTIVE
+  NOTIFIED
+  BOOKED
+  EXPIRED
 }
