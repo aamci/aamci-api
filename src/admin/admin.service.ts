@@ -544,8 +544,16 @@ export class AdminService {
   }
 
   async addFacilityToDoctor(doctorUserId: string, facilityId: string) {
-    const profile = await this.prisma.doctorProfile.findUnique({ where: { userId: doctorUserId } });
-    if (!profile) throw new NotFoundException('Profil médecin introuvable');
+    const user = await this.prisma.user.findUnique({ where: { id: doctorUserId } });
+    if (!user || user.role !== 'DOCTOR') throw new NotFoundException('Médecin introuvable');
+
+    // Create profile if it doesn't exist yet
+    await this.prisma.doctorProfile.upsert({
+      where: { userId: doctorUserId },
+      create: { userId: doctorUserId },
+      update: {},
+    });
+
     return this.prisma.doctorProfile.update({
       where: { userId: doctorUserId },
       data: { facilities: { connect: { id: facilityId } } },
