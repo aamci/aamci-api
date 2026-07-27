@@ -235,7 +235,7 @@ export class AppointmentsService {
         beneficiaryName: data.beneficiaryName,
         beneficiaryPhone: data.beneficiaryPhone,
         facilityId: data.facilityId || null,
-      },
+      } as any,
       include: {
         slot: true,
         patient: { select: PATIENT_SELECT },
@@ -257,7 +257,7 @@ export class AppointmentsService {
       },
       isPatientBooking
         ? `Rendez-vous réservé par le patient${initialStatus === 'CONFIRMED' ? ' (auto-confirmé)' : ''}`
-        : `Rendez-vous créé par le médecin pour ${appointment.patient.fullName || 'le patient'}`
+        : `Rendez-vous créé par le médecin pour ${(appointment as any).patient?.fullName || 'le patient'}`
     );
 
     // Envoyer une notification au patient
@@ -326,7 +326,7 @@ export class AppointmentsService {
         // Tag with recurrence group
         const tagged = await this.prisma.appointment.update({
           where: { id: appt.id },
-          data: { recurrenceGroupId: groupId, recurrenceIndex: i + 1 },
+          data: { recurrenceGroupId: groupId, recurrenceIndex: i + 1 } as any,
           include: { slot: true, patient: { select: PATIENT_SELECT }, kind: true },
         });
         results.push(tagged);
@@ -724,7 +724,7 @@ export class AppointmentsService {
           appointment: {
             include: {
               patient: { select: { id: true, fullName: true, email: true } },
-              slot:    { select: { startTime: true, ownerId: true } },
+              slot:    { select: { start: true, ownerId: true } },
             },
           },
         },
@@ -889,16 +889,16 @@ export class AppointmentsService {
     const isPatient = appt.patientId === userId;
     const isDoctor  = appt.slot.ownerId === userId;
     if (!isPatient && !isDoctor) throw new ForbiddenException('Accès refusé');
-    if (appt.checkedInAt) return appt; // already checked in
+    if ((appt as any).checkedInAt) return appt; // already checked in
 
     const updated = await this.prisma.appointment.update({
       where: { id: appointmentId },
-      data: { checkedInAt: new Date() },
+      data: { checkedInAt: new Date() } as any,
       include: { slot: true, patient: { select: PATIENT_SELECT }, kind: true },
     });
 
     await this.logHistory(
-      appointmentId, 'CHECKED_IN', userId, {}, { checkedInAt: updated.checkedInAt },
+      appointmentId, 'CHECKED_IN', userId, {}, { checkedInAt: (updated as any).checkedInAt },
       `Patient arrivé (check-in confirmé)`
     );
 

@@ -318,28 +318,25 @@ export class FacilityManagersService {
       ? doctors.filter(d => d.id === filters.doctorId).map(d => d.id)
       : doctors.map(d => d.id);
 
-    const dateFilter: any = {};
+    const slotWhere: any = { ownerId: { in: doctorIds }, ownerType: 'DOCTOR' };
     if (filters.date) {
       const d = new Date(filters.date);
-      const start = new Date(d); start.setHours(0, 0, 0, 0);
-      const end = new Date(d); end.setHours(23, 59, 59, 999);
-      dateFilter.slot = { startTime: { gte: start, lte: end } };
+      const dayStart = new Date(d); dayStart.setHours(0, 0, 0, 0);
+      const dayEnd   = new Date(d); dayEnd.setHours(23, 59, 59, 999);
+      slotWhere.start = { gte: dayStart, lte: dayEnd };
     }
 
-    const statusFilter = filters.status ? { status: filters.status as any } : {};
+    const where: any = { slot: slotWhere };
+    if (filters.status) where.status = filters.status;
 
     return this.prisma.appointment.findMany({
-      where: {
-        slot: { ownerId: { in: doctorIds }, ownerType: 'DOCTOR' },
-        ...statusFilter,
-        ...(filters.date ? { slot: { ownerId: { in: doctorIds }, ownerType: 'DOCTOR', startTime: { gte: new Date(filters.date + 'T00:00:00'), lte: new Date(filters.date + 'T23:59:59') } } } : {}),
-      },
+      where,
       include: {
         patient: { select: { id: true, fullName: true, email: true, phone: true, avatarUrl: true } },
-        slot: { select: { startTime: true, endTime: true, ownerId: true } },
+        slot: { select: { start: true, end: true, ownerId: true } },
         kind: { select: { name: true, durationMins: true, isTelemedicine: true } },
       },
-      orderBy: { slot: { startTime: 'asc' } },
+      orderBy: { slot: { start: 'asc' } },
       take: 200,
     });
   }
@@ -352,8 +349,8 @@ export class FacilityManagersService {
       where: { id: appointmentId, slot: { ownerId: { in: doctorIds } } },
       include: {
         patient: { select: { fullName: true, email: true } },
-        slot: { select: { startTime: true, endTime: true, ownerId: true } },
-        kind: { select: { name: true } },
+        slot:    { select: { start: true, end: true, ownerId: true } },
+        kind:    { select: { name: true } },
       },
     });
     if (!appt) throw new Error('Rendez-vous introuvable ou non autorisé');
@@ -364,8 +361,8 @@ export class FacilityManagersService {
       {
         patientName: appt.patient.fullName || 'Patient',
         doctorName: doctor?.fullName || 'Médecin',
-        date: appt.slot.startTime.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-        time: appt.slot.startTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        date: appt.slot.start.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        time: appt.slot.start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
         kindName: appt.kind?.name,
       }
     );

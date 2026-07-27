@@ -16,17 +16,17 @@ export class WaitlistService {
     const date = new Date(dto.date);
     date.setUTCHours(0, 0, 0, 0);
 
-    const existing = await this.prisma.waitlistEntry.findFirst({
+    const existing = await (this.prisma as any).waitlistEntry.findFirst({
       where: { doctorId: dto.doctorId, patientId, date, status: 'ACTIVE' },
     });
     if (existing) throw new BadRequestException('Vous êtes déjà sur la liste d\'attente pour ce médecin ce jour');
 
-    const lastInQueue = await this.prisma.waitlistEntry.findFirst({
+    const lastInQueue = await (this.prisma as any).waitlistEntry.findFirst({
       where: { doctorId: dto.doctorId, date, status: 'ACTIVE' },
       orderBy: { position: 'desc' },
     });
 
-    return this.prisma.waitlistEntry.create({
+    return (this.prisma as any).waitlistEntry.create({
       data: {
         doctorId: dto.doctorId,
         patientId,
@@ -43,16 +43,16 @@ export class WaitlistService {
   }
 
   async leave(entryId: string, patientId: string) {
-    const entry = await this.prisma.waitlistEntry.findUnique({ where: { id: entryId } });
+    const entry = await (this.prisma as any).waitlistEntry.findUnique({ where: { id: entryId } });
     if (!entry) throw new NotFoundException('Entrée introuvable');
     if (entry.patientId !== patientId) throw new ForbiddenException('Accès refusé');
 
-    await this.prisma.waitlistEntry.delete({ where: { id: entryId } });
+    await (this.prisma as any).waitlistEntry.delete({ where: { id: entryId } });
     return { success: true };
   }
 
   async myEntries(patientId: string) {
-    return this.prisma.waitlistEntry.findMany({
+    return (this.prisma as any).waitlistEntry.findMany({
       where: { patientId, status: { in: ['ACTIVE', 'NOTIFIED'] } },
       include: {
         doctor: { select: { id: true, fullName: true, email: true, avatarUrl: true } },
@@ -68,7 +68,7 @@ export class WaitlistService {
       d.setUTCHours(0, 0, 0, 0);
       where.date = d;
     }
-    return this.prisma.waitlistEntry.findMany({
+    return (this.prisma as any).waitlistEntry.findMany({
       where,
       include: { patient: { select: { id: true, fullName: true, email: true, phone: true } } },
       orderBy: [{ date: 'asc' }, { position: 'asc' }],
@@ -82,7 +82,7 @@ export class WaitlistService {
     const dayEnd = new Date(dayStart);
     dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
 
-    const first = await this.prisma.waitlistEntry.findFirst({
+    const first = await (this.prisma as any).waitlistEntry.findFirst({
       where: {
         doctorId,
         date: { gte: dayStart, lt: dayEnd },
@@ -97,7 +97,7 @@ export class WaitlistService {
 
     if (!first) return;
 
-    await this.prisma.waitlistEntry.update({
+    await (this.prisma as any).waitlistEntry.update({
       where: { id: first.id },
       data: { status: 'NOTIFIED', notifiedAt: new Date() },
     });
