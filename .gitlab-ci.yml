@@ -124,7 +124,7 @@ migrate:db:
   image: alpine:3.19
   rules:
     - when: manual
-      allow_failure: false
+      allow_failure: true
   before_script:
     - *ssh-before
   script:
@@ -157,7 +157,7 @@ seed:db:
   image: alpine:3.19
   rules:
     - when: manual
-      allow_failure: false
+      allow_failure: true
   before_script:
     - *ssh-before
   script:
@@ -175,7 +175,7 @@ db:push:
   image: alpine:3.19
   rules:
     - when: manual
-      allow_failure: false
+      allow_failure: true
   before_script:
     - *ssh-before
   script:
@@ -189,7 +189,7 @@ backup:db:
   image: alpine:3.19
   rules:
     - when: manual
-      allow_failure: false
+      allow_failure: true
   before_script:
     - *ssh-before
   script:
