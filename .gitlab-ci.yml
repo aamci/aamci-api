@@ -15,6 +15,7 @@ stages:
   - deploy
   - migrate
   - seed
+  - schema
 
 # ── SSH helper ────────────────────────────────────────────────────────────────
 
@@ -162,6 +163,24 @@ seed:db:
   script:
     - ssh "$DEPLOY_USER@$DEPLOY_HOST"
       "docker exec health-api-1 node dist/prisma/seed.js"
+
+# ── Prisma DB Push (manuel) ──────────────────────────────────────────────────
+#
+# Applique le schéma Prisma directement sur la DB sans créer de migration.
+# Déclencher via : GitLab → Pipelines → Run pipeline
+# ⚠ Peut modifier ou supprimer des colonnes — à utiliser avec précaution en prod.
+
+db:push:
+  stage: schema
+  image: alpine:3.19
+  rules:
+    - when: manual
+      allow_failure: false
+  before_script:
+    - *ssh-before
+  script:
+    - ssh "$DEPLOY_USER@$DEPLOY_HOST"
+      "docker exec health-api-1 npx prisma db push --skip-generate --accept-data-loss"
 
 # ── Backup DB (manuel ou planifié) ───────────────────────────────────────────
 
