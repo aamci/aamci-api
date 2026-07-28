@@ -21,7 +21,7 @@ export class FacilityManagerGuard implements CanActivate {
     }
 
     // Vérifier si l'utilisateur est un gestionnaire autorisé
-    if (user.role === 'FACILITY_MANAGER') {
+    if (user.role === 'FACILITY_MANAGER' || user.role === 'SECRETARY') {
       const manager = await this.prisma.facilityManager.findUnique({
         where: { userId: user.userId },
         include: {

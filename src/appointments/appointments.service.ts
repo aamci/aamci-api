@@ -690,7 +690,7 @@ export class AppointmentsService {
     const skip  = (page - 1) * limit;
 
     let ownerIds: string[];
-    if (role === 'FACILITY_MANAGER') {
+    if (role === 'FACILITY_MANAGER' || role === 'SECRETARY') {
       if (params.doctorIds?.length) {
         ownerIds = params.doctorIds;
       } else {

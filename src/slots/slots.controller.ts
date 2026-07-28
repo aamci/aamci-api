@@ -17,7 +17,7 @@ import { SlotsService } from './slots.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 // To re-allow doctors to manage their own slots, add 'DOCTOR' to this array.
-const CALENDAR_WRITE_ROLES = ['DOCTOR', 'FACILITY_MANAGER', 'HOSPITAL'];
+const CALENDAR_WRITE_ROLES = ['DOCTOR', 'FACILITY_MANAGER', 'SECRETARY', 'HOSPITAL'];
 
 @Controller('slots')
 //@UseGuards(JwtAuthGuard)

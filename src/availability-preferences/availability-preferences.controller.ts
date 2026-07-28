@@ -25,7 +25,7 @@ export class AvailabilityPreferencesController {
   ) {}
 
   @Post()
-  @Roles('DOCTOR', 'FACILITY_MANAGER')
+  @Roles('DOCTOR', 'FACILITY_MANAGER', 'SECRETARY')
   create(@Req() req: any, @Body() createPreferenceDto: CreatePreferenceDto) {
     const userId = req.user?.userId || req.user?.sub;
     const ownerType = req.user.role;
@@ -37,7 +37,7 @@ export class AvailabilityPreferencesController {
   }
 
   @Get()
-  @Roles('DOCTOR', 'FACILITY_MANAGER')
+  @Roles('DOCTOR', 'FACILITY_MANAGER', 'SECRETARY')
   findAll(@Req() req: any) {
     const userId = req.user?.userId || req.user?.sub;
     const ownerType = req.user.role;
@@ -48,13 +48,13 @@ export class AvailabilityPreferencesController {
   }
 
   @Get(':id')
-  @Roles('DOCTOR', 'FACILITY_MANAGER')
+  @Roles('DOCTOR', 'FACILITY_MANAGER', 'SECRETARY')
   findOne(@Req() req: any, @Param('id') id: string) {
     return this.availabilityPreferencesService.findOne(id, req.user?.userId || req.user?.sub);
   }
 
   @Patch(':id')
-  @Roles('DOCTOR', 'FACILITY_MANAGER')
+  @Roles('DOCTOR', 'FACILITY_MANAGER', 'SECRETARY')
   update(
     @Req() req: any,
     @Param('id') id: string,
@@ -68,19 +68,19 @@ export class AvailabilityPreferencesController {
   }
 
   @Delete(':id')
-  @Roles('DOCTOR', 'FACILITY_MANAGER')
+  @Roles('DOCTOR', 'FACILITY_MANAGER', 'SECRETARY')
   remove(@Req() req: any, @Param('id') id: string) {
     return this.availabilityPreferencesService.remove(id, req.user?.userId || req.user?.sub);
   }
 
   @Post(':id/set-default')
-  @Roles('DOCTOR', 'FACILITY_MANAGER')
+  @Roles('DOCTOR', 'FACILITY_MANAGER', 'SECRETARY')
   setDefault(@Req() req: any, @Param('id') id: string) {
     return this.availabilityPreferencesService.setDefault(id, req.user?.userId || req.user?.sub);
   }
 
   @Post(':id/apply')
-  @Roles('DOCTOR', 'FACILITY_MANAGER')
+  @Roles('DOCTOR', 'FACILITY_MANAGER', 'SECRETARY')
   applyPreference(
     @Req() req: any,
     @Param('id') id: string,
