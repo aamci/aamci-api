@@ -54,6 +54,9 @@ export class AvailabilityRulesController {
 
       ownerType = 'DOCTOR';
       targetDoctorId = dto.doctorId;
+    } else if (req.user.role === 'DOCTOR') {
+      ownerType = 'DOCTOR';
+      targetDoctorId = userId;
     } else if (req.user.role === 'HOSPITAL') {
       ownerType = 'HOSPITAL';
       targetDoctorId = userId;
