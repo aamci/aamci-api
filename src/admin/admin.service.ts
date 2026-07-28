@@ -1015,7 +1015,7 @@ export class AdminService {
   }) {
     const user = await this.prisma.user.findUnique({ where: { id: data.userId } });
     if (!user) throw new NotFoundException('Utilisateur introuvable');
-    if (user.role !== 'FACILITY_MANAGER') throw new BadRequestException('L\'utilisateur doit avoir le rôle FACILITY_MANAGER');
+    if (!['FACILITY_MANAGER', 'SECRETARY'].includes(user.role)) throw new BadRequestException('L\'utilisateur doit avoir le rôle FACILITY_MANAGER ou SECRETARY');
 
     const facility = await this.prisma.facility.findUnique({ where: { id: data.facilityId } });
     if (!facility) throw new NotFoundException('Établissement introuvable');

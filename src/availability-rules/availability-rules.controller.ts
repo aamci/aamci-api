@@ -18,7 +18,7 @@ import { UpdateAvailabilityRuleDto } from './dto/update-availability-rule.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { FacilityManagersService } from '../facility-managers/facility-managers.service';
 
-const CALENDAR_WRITE_ROLES = ['DOCTOR', 'FACILITY_MANAGER', 'HOSPITAL'];
+const CALENDAR_WRITE_ROLES = ['DOCTOR', 'FACILITY_MANAGER', 'SECRETARY', 'HOSPITAL'];
 
 @Controller('availability-rules')
 @UseGuards(JwtAuthGuard)
@@ -54,6 +54,16 @@ export class AvailabilityRulesController {
 
       ownerType = 'DOCTOR';
       targetDoctorId = dto.doctorId;
+    } else if (req.user.role === 'SECRETARY') {
+      if (!dto.doctorId) {
+        throw new BadRequestException('doctorId required for SECRETARY');
+      }
+      const canManage = await this.facilityManagersService.canManageDoctor(userId, dto.doctorId);
+      if (!canManage) {
+        throw new ForbiddenException('Cannot manage this doctor');
+      }
+      ownerType = 'DOCTOR';
+      targetDoctorId = dto.doctorId;
     } else if (req.user.role === 'DOCTOR') {
       ownerType = 'DOCTOR';
       targetDoctorId = userId;
@@ -73,6 +83,48 @@ export class AvailabilityRulesController {
     if (!userId) throw new UnauthorizedException('User not authenticated');
 
     return this.service.findAllByOwner(userId);
+  }
+
+  @Get('by-doctor/:doctorId')
+  async findByDoctor(@Req() req, @Param('doctorId') doctorId: string) {
+    const userId = req.user?.id || req.user?.userId;
+    if (!userId) throw new UnauthorizedException('User not authenticated');
+
+    if (!CALENDAR_WRITE_ROLES.includes(req.user.role)) {
+      throw new ForbiddenException('Accès non autorisé');
+    }
+
+    if (req.user.role === 'DOCTOR' && userId !== doctorId) {
+      throw new ForbiddenException('Accès non autorisé');
+    }
+
+    if (['FACILITY_MANAGER', 'SECRETARY'].includes(req.user.role)) {
+      const canManage = await this.facilityManagersService.canManageDoctor(userId, doctorId);
+      if (!canManage) throw new ForbiddenException('Cannot manage this doctor');
+    }
+
+    return this.service.findAllByOwner(doctorId);
+  }
+
+  @Delete('by-doctor/:doctorId/:ruleId')
+  async deleteByDoctor(@Req() req, @Param('doctorId') doctorId: string, @Param('ruleId') ruleId: string) {
+    const userId = req.user?.id || req.user?.userId;
+    if (!userId) throw new UnauthorizedException('User not authenticated');
+
+    if (!CALENDAR_WRITE_ROLES.includes(req.user.role)) {
+      throw new ForbiddenException('Accès non autorisé');
+    }
+
+    if (req.user.role === 'DOCTOR' && userId !== doctorId) {
+      throw new ForbiddenException('Accès non autorisé');
+    }
+
+    if (['FACILITY_MANAGER', 'SECRETARY'].includes(req.user.role)) {
+      const canManage = await this.facilityManagersService.canManageDoctor(userId, doctorId);
+      if (!canManage) throw new ForbiddenException('Cannot manage this doctor');
+    }
+
+    return this.service.remove(ruleId, doctorId);
   }
 
   @Get(':id')

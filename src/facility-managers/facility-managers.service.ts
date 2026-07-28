@@ -17,8 +17,8 @@ export class FacilityManagersService {
       throw new NotFoundException('User not found');
     }
 
-    if (user.role !== 'FACILITY_MANAGER') {
-      throw new BadRequestException('User must have FACILITY_MANAGER role');
+    if (!['FACILITY_MANAGER', 'SECRETARY'].includes(user.role)) {
+      throw new BadRequestException('User must have FACILITY_MANAGER or SECRETARY role');
     }
 
     // Vérifier que l'établissement existe

@@ -34,35 +34,35 @@ export class FacilityManagersController {
   }
 
   @Get('me')
-  @Roles('FACILITY_MANAGER')
+  @Roles('FACILITY_MANAGER', 'SECRETARY')
   findMe(@Req() req: any) {
     const userId = req.user?.userId || req.user?.sub;
     return this.facilityManagersService.findOne(userId);
   }
 
   @Get('me/doctors')
-  @Roles('FACILITY_MANAGER')
+  @Roles('FACILITY_MANAGER', 'SECRETARY')
   getManagedDoctors(@Req() req: any) {
     const userId = req.user?.userId || req.user?.sub;
     return this.facilityManagersService.getManagedDoctors(userId);
   }
 
   @Get('me/finances')
-  @Roles('FACILITY_MANAGER')
+  @Roles('FACILITY_MANAGER', 'SECRETARY')
   getFinances(@Req() req: any) {
     const userId = req.user?.userId || req.user?.sub;
     return this.facilityManagersService.getFacilityFinances(userId);
   }
 
   @Get('my-facility')
-  @Roles('FACILITY_MANAGER')
+  @Roles('FACILITY_MANAGER', 'SECRETARY')
   getMyFacility(@Req() req: any) {
     const userId = req.user?.userId || req.user?.sub;
     return this.facilityManagersService.getMyFacility(userId);
   }
 
   @Patch('my-facility')
-  @Roles('FACILITY_MANAGER')
+  @Roles('FACILITY_MANAGER', 'SECRETARY')
   updateMyFacility(@Req() req: any, @Body() body: any) {
     const userId = req.user?.userId || req.user?.sub;
     return this.facilityManagersService.updateMyFacility(userId, body);
@@ -84,7 +84,7 @@ export class FacilityManagersController {
   }
 
   @Post('me/doctors')
-  @Roles('FACILITY_MANAGER', 'ADMIN')
+  @Roles('FACILITY_MANAGER', 'SECRETARY', 'ADMIN')
   assignDoctor(@Req() req: any, @Body() assignDoctorDto: AssignDoctorDto) {
     const userId = req.user?.userId || req.user?.sub;
     return this.facilityManagersService.assignDoctor(
@@ -94,14 +94,14 @@ export class FacilityManagersController {
   }
 
   @Delete('me/doctors/:doctorId')
-  @Roles('FACILITY_MANAGER', 'ADMIN')
+  @Roles('FACILITY_MANAGER', 'SECRETARY', 'ADMIN')
   removeDoctor(@Req() req: any, @Param('doctorId') doctorId: string) {
     const userId = req.user?.userId || req.user?.sub;
     return this.facilityManagersService.removeDoctor(userId, doctorId);
   }
 
   @Get('me/appointments')
-  @Roles('FACILITY_MANAGER')
+  @Roles('FACILITY_MANAGER', 'SECRETARY')
   getManagedAppointments(
     @Req() req: any,
     @Query('doctorId') doctorId?: string,
@@ -113,7 +113,7 @@ export class FacilityManagersController {
   }
 
   @Post('me/appointments/:appointmentId/reminder')
-  @Roles('FACILITY_MANAGER')
+  @Roles('FACILITY_MANAGER', 'SECRETARY')
   sendReminder(@Req() req: any, @Param('appointmentId') appointmentId: string) {
     const userId = req.user?.userId || req.user?.sub;
     return this.facilityManagersService.sendAppointmentReminder(userId, appointmentId, this.emailService);
