@@ -101,12 +101,30 @@ export class AppointmentsService {
     });
   }
 
-  // Vérifie si une secrétaire est autorisée à gérer un appointment donné
-  private async secretaryCanManage(secretaryId: string, doctorId: string): Promise<boolean> {
+  // Vérifie si une secrétaire (TeamMember) ou un gestionnaire (FacilityManager) peut gérer ce médecin
+  private async managerCanManage(managerId: string, doctorId: string): Promise<boolean> {
+    // Path 1 : FacilityManager (SECRETARY ou FM assigné par admin)
+    const fm = await this.prisma.facilityManager.findUnique({
+      where: { userId: managerId },
+      include: { facility: { include: { doctors: true } } },
+    });
+    if (fm) {
+      const allIds = [
+        ...fm.facility.doctors.map((d: any) => d.userId),
+        ...(fm.managedDoctorIds || []),
+      ];
+      if (allIds.includes(doctorId)) return true;
+    }
+    // Path 2 : TeamMember (SECRETARY invité directement par un médecin)
     const membership = await this.prisma.teamMember.findFirst({
-      where: { userId: secretaryId, ownerId: doctorId, status: 'ACTIVE' },
+      where: { userId: managerId, ownerId: doctorId, status: 'ACTIVE' },
     });
     return !!membership;
+  }
+
+  /** @deprecated use managerCanManage */
+  private async secretaryCanManage(secretaryId: string, doctorId: string): Promise<boolean> {
+    return this.managerCanManage(secretaryId, doctorId);
   }
 
   // créer côté patient
@@ -352,9 +370,10 @@ export class AppointmentsService {
 
     // Contrôle de propriété
     const isOwner = appt.slot.ownerId === requesterId;
-    const isSecretary = role === 'SECRETARY' && await this.secretaryCanManage(requesterId, appt.slot.ownerId);
+    const canManage = !isOwner && ['FACILITY_MANAGER', 'SECRETARY'].includes(role ?? '') &&
+      await this.managerCanManage(requesterId, appt.slot.ownerId);
 
-    if (!isOwner && !isSecretary) {
+    if (!isOwner && !canManage) {
       throw new ForbiddenException('Vous ne pouvez modifier que les rendez-vous de vos créneaux.');
     }
 
@@ -463,7 +482,7 @@ export class AppointmentsService {
     });
   }
 
-  // ✅ DOCTOR / HOSPITAL modifie un RDV
+  // ✅ DOCTOR / HOSPITAL / FACILITY_MANAGER / SECRETARY modifie un RDV
   async updateAsOwner(
     appointmentId: string,
     requesterId: string,
@@ -473,7 +492,8 @@ export class AppointmentsService {
       patientId?: string;
       kindId?: string;
       notes?: string;
-    }
+    },
+    role?: string,
   ) {
     const appt = await this.prisma.appointment.findUnique({
       where: { id: appointmentId },
@@ -487,9 +507,16 @@ export class AppointmentsService {
     });
     if (!appt) throw new NotFoundException('Rendez-vous introuvable');
 
-    if (appt.slot.ownerId !== requesterId) {
+    const isOwner = appt.slot.ownerId === requesterId;
+    const canManage = !isOwner && ['FACILITY_MANAGER', 'SECRETARY'].includes(role ?? '') &&
+      await this.managerCanManage(requesterId, appt.slot.ownerId);
+
+    if (!isOwner && !canManage) {
       throw new ForbiddenException('Vous ne pouvez modifier que les rendez-vous de vos créneaux.');
     }
+
+    // Pour les gestionnaires, l'ownerId réel est celui du médecin
+    const effectiveOwnerId = isOwner ? requesterId : appt.slot.ownerId;
 
     // Si les horaires changent (déplacement), créer un nouveau slot
     if (data.slotStart && data.slotEnd) {

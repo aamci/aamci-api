@@ -48,7 +48,7 @@ export class AppointmentsController {
     console.log(`[APPT CONTROLLER] PATCH /appointments/${id} appelé par userId: ${userId}`);
     console.log(`[APPT CONTROLLER] DTO reçu:`, JSON.stringify(dto, null, 2));
 
-    const result = await this.svc.updateAsOwner(id, userId, dto);
+    const result = await this.svc.updateAsOwner(id, userId, dto, req.user.role);
 
     console.log(`[APPT CONTROLLER] Rendez-vous mis à jour avec succès`);
     return result;
