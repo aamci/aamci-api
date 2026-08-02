@@ -453,4 +453,49 @@ export class UsersService {
 
     return appointments.map((a) => a.patient);
   }
+
+  async updateInsurance(userId: string, data: {
+    insuranceProvider?: string;
+    insuranceNumber?: string;
+    insuranceExpiryDate?: string;
+    mutualInsurance?: string;
+    socialSecurityNumber?: string;
+  }) {
+    return (this.prisma as any).patientProfile.upsert({
+      where: { userId },
+      create: { userId, ...data },
+      update: data,
+    });
+  }
+
+  async getInsurance(userId: string) {
+    const profile = await (this.prisma as any).patientProfile.findUnique({
+      where: { userId },
+      select: {
+        insuranceProvider: true,
+        insuranceNumber: true,
+        insuranceExpiryDate: true,
+        mutualInsurance: true,
+        socialSecurityNumber: true,
+      },
+    });
+    return profile ?? {};
+  }
+
+  async updateNotificationPrefs(userId: string, data: { smsReminderEnabled?: boolean }) {
+    return (this.prisma as any).patientProfile.upsert({
+      where: { userId },
+      create: { userId, ...data },
+      update: data,
+      select: { smsReminderEnabled: true },
+    });
+  }
+
+  async getNotificationPrefs(userId: string) {
+    const profile = await (this.prisma as any).patientProfile.findUnique({
+      where: { userId },
+      select: { smsReminderEnabled: true },
+    });
+    return { smsReminderEnabled: profile?.smsReminderEnabled ?? true };
+  }
 }

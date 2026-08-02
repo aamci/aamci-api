@@ -302,4 +302,16 @@ export class PatientRecordController {
   async getAppointmentHistory(@Param('patientId') patientId: string) {
     return this.patientRecordService.getAppointmentHistory(patientId);
   }
+
+  // ==========================================
+  // PARTAGE DU DOSSIER
+  // ==========================================
+
+  @Post('share')
+  async shareDossier(
+    @Request() req: any,
+    @Body() body: { doctorId: string; note?: string },
+  ) {
+    return this.patientRecordService.shareDossier(req.user.userId, body.doctorId, body.note);
+  }
 }

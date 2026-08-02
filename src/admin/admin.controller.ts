@@ -496,6 +496,73 @@ export class AdminController {
     return this.adminService.getCorrespondenceById(id);
   }
 
+  // ─── Reviews moderation ──────────────────────────────────────────────────
+
+  @Get('reviews')
+  async getReviews(
+    @Req() req,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('isApproved') isApproved?: string,
+    @Query('isReported') isReported?: string,
+    @Query('search') search?: string,
+  ) {
+    requireAdminAccess(req.user);
+    return this.adminService.getReviews({
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+      isApproved: isApproved !== undefined ? isApproved === 'true' : undefined,
+      isReported: isReported !== undefined ? isReported === 'true' : undefined,
+      search,
+    });
+  }
+
+  @Patch('reviews/:id')
+  async moderateReview(@Req() req, @Param('id') id: string, @Body() body: { isApproved?: boolean; isReported?: boolean }) {
+    requireAdminWrite(req.user);
+    return this.adminService.moderateReview(id, body);
+  }
+
+  @Delete('reviews/:id')
+  async deleteReview(@Req() req, @Param('id') id: string) {
+    requireAdminWrite(req.user);
+    return this.adminService.deleteReview(id, req.user.id);
+  }
+
+  // ─── Doctor verification ─────────────────────────────────────────────────
+
+  @Get('doctors/pending-verification')
+  async getPendingDoctors(@Req() req) {
+    requireAdminAccess(req.user);
+    return this.adminService.getPendingDoctors();
+  }
+
+  @Post('doctors/:id/verify')
+  async verifyDoctor(@Req() req, @Param('id') id: string) {
+    requireAdminWrite(req.user);
+    return this.adminService.verifyDoctor(id, req.user.id);
+  }
+
+  @Post('doctors/:id/reject')
+  async rejectDoctor(@Req() req, @Param('id') id: string, @Body() body: { reason?: string }) {
+    requireAdminWrite(req.user);
+    return this.adminService.rejectDoctor(id, req.user.id, body.reason);
+  }
+
+  // ─── Appointment status + alerts ─────────────────────────────────────────
+
+  @Patch('appointments/:id/status')
+  async updateAppointmentStatus(@Req() req, @Param('id') id: string, @Body() body: { status: string }) {
+    requireAdminWrite(req.user);
+    return this.adminService.updateAppointmentStatus(id, body.status, req.user.id);
+  }
+
+  @Get('alerts')
+  async getAlerts(@Req() req) {
+    requireAdminAccess(req.user);
+    return this.adminService.getAlerts();
+  }
+
   // ─── 2FA Admin ───────────────────────────────────────────────────────────
 
   @Get('2fa/stats')

@@ -121,6 +121,12 @@ model User {
   // Liste d'attente
   waitlistAsPatient        WaitlistEntry[]         @relation("WaitlistPatient")
   waitlistAsDoctor         WaitlistEntry[]         @relation("WaitlistDoctor")
+
+  // Questionnaires créés par le médecin
+  questionnaires           Questionnaire[]         @relation("DoctorQuestionnaires")
+
+  // Proches (beneficiaries)
+  beneficiaries            Beneficiary[]           @relation("PatientBeneficiaries")
 }
 
 enum Role {
@@ -168,6 +174,12 @@ model Appointment {
   recurrenceGroupId String?
   recurrenceIndex   Int?
 
+  // Pré-paiement Stripe
+  prepaidPaymentIntentId String?
+  prepaidStatus          PrepaidStatus?
+  prepaidAmount          Decimal?      @db.Decimal(10, 2)
+  prepaidRefundedAt      DateTime?
+
   slot          AvailabilitySlot    @relation(fields: [slotId], references: [id], onDelete: Cascade)
   patient       User                @relation("PatientAppointments", fields: [patientId], references: [id])
   transactions  Transaction[]
@@ -176,6 +188,7 @@ model Appointment {
   notifications Notification[]
   review        DoctorReview?
   consultations Consultation[]
+  questionnaireResponse QuestionnaireResponse?
 
   @@index([recurrenceGroupId])
 }
@@ -430,11 +443,17 @@ model DoctorProfile {
   presentation String?
   formations   String?
   experiences  String?
+  languages    String?  // JSON array: ["Français","Anglais","Arabe"]
+  latitude     Float?
+  longitude    Float?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // Vérification par l'admin
+  isVerified   Boolean  @default(false)
+
   // Paramètres de confirmation des rendez-vous
-  autoConfirmPatientBookings Boolean @default(true)  // Si true, les RDV pris par patients sont auto-confirmés
+  autoConfirmPatientBookings Boolean @default(true)
 
   // many-to-many implicite avec Facility : NE PAS mettre "references" ici
   facilities   Facility[]  @relation("DoctorFacilities")
@@ -446,6 +465,21 @@ model DoctorProfile {
   // Aggregated rating (computed)
   averageRating Float?   @default(0)
   totalReviews  Int      @default(0)
+}
+
+model Beneficiary {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation("PatientBeneficiaries", fields: [userId], references: [id], onDelete: Cascade)
+  firstName    String
+  lastName     String
+  birthDate    DateTime?
+  relationship String    // enfant, conjoint, parent, autre
+  phone        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
 }
 
 model PatientProfile {
@@ -474,8 +508,13 @@ model PatientProfile {
 
   // COUVERTURE SOCIALE
   socialSecurityNumber String?   // N° sécurité sociale
-  insuranceProvider    String?   // Organisme
+  insuranceProvider    String?   // Organisme (CNSS, etc.)
+  insuranceNumber      String?   // N° adhérent / carte
+  insuranceExpiryDate  String?   // Date d'expiration (MM/YY)
   mutualInsurance      String?   // Mutuelle
+
+  // PRÉFÉRENCES NOTIFICATIONS
+  smsReminderEnabled   Boolean   @default(true)
 
   // INFORMATIONS MÉDICALES
   primaryDoctorName String?
@@ -548,6 +587,14 @@ model AppointmentKind {
   isTelemedicine  Boolean @default(false)  // Si true, c'est une téléconsultation
   durationMins    Int     @default(30)     // Durée en minutes
   color           String? // Couleur pour l'affichage
+
+  // Pré-paiement
+  requiresPrePayment Boolean  @default(false)
+  price              Decimal? @db.Decimal(10, 2)
+
+  // Questionnaire pré-RDV
+  questionnaireId String?
+  questionnaire   Questionnaire? @relation(fields: [questionnaireId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2009,4 +2056,66 @@ enum WaitlistStatus {
   NOTIFIED
   BOOKED
   EXPIRED
+}
+
+// ─── Questionnaires pré-RDV ───────────────────────────────────────────────────
+
+enum QuestionType {
+  TEXT
+  TEXTAREA
+  YES_NO
+  SCALE
+  MULTIPLE_CHOICE
+}
+
+model Questionnaire {
+  id          String     @id @default(cuid())
+  doctorId    String
+  doctor      User       @relation("DoctorQuestionnaires", fields: [doctorId], references: [id], onDelete: Cascade)
+  title       String
+  description String?    @db.Text
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  questions   Question[]
+  kinds       AppointmentKind[]
+  responses   QuestionnaireResponse[]
+
+  @@index([doctorId])
+}
+
+model Question {
+  id              String        @id @default(cuid())
+  questionnaireId String
+  questionnaire   Questionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+  text            String
+  type            QuestionType  @default(TEXT)
+  options         String?       // JSON array for MULTIPLE_CHOICE
+  required        Boolean       @default(false)
+  order           Int           @default(0)
+  createdAt       DateTime      @default(now())
+
+  @@index([questionnaireId])
+}
+
+model QuestionnaireResponse {
+  id              String        @id @default(cuid())
+  appointmentId   String        @unique
+  appointment     Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  questionnaireId String
+  questionnaire   Questionnaire @relation(fields: [questionnaireId], references: [id])
+  answers         Json          // { questionId: answer }
+  submittedAt     DateTime      @default(now())
+
+  @@index([questionnaireId])
+}
+
+// ─── Pré-paiement ─────────────────────────────────────────────────────────────
+
+enum PrepaidStatus {
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
 }

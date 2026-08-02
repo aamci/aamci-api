@@ -1,5 +1,5 @@
 // src/users/users.controller.ts
-import { Body, Controller, Delete, Get, Post, Put, Query, Req, Res, UseGuards, BadRequestException, Param } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Patch, Post, Put, Query, Req, Res, UseGuards, BadRequestException, Param } from '@nestjs/common';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UsersService } from './users.service';
@@ -72,6 +72,32 @@ export class UsersController {
       throw new BadRequestException('Mot de passe actuel et nouveau mot de passe requis');
     }
     return this.users.changePassword(userId, dto.currentPassword, dto.newPassword);
+  }
+
+  @Patch('me/insurance')
+  async updateInsurance(@Req() req, @Body() dto: {
+    insuranceProvider?: string;
+    insuranceNumber?: string;
+    insuranceExpiryDate?: string;
+    mutualInsurance?: string;
+    socialSecurityNumber?: string;
+  }) {
+    return this.users.updateInsurance(req.user.userId, dto);
+  }
+
+  @Get('me/insurance')
+  async getInsurance(@Req() req) {
+    return this.users.getInsurance(req.user.userId);
+  }
+
+  @Patch('me/notification-preferences')
+  async updateNotificationPrefs(@Req() req, @Body() dto: { smsReminderEnabled?: boolean }) {
+    return this.users.updateNotificationPrefs(req.user.userId, dto);
+  }
+
+  @Get('me/notification-preferences')
+  async getNotificationPrefs(@Req() req) {
+    return this.users.getNotificationPrefs(req.user.userId);
   }
 
   @Delete('me')

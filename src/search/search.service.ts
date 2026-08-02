@@ -13,6 +13,8 @@ export class SearchService {
     facilityId?: string,
     availableIn?: string,
     video?: string,
+    gender?: string,
+    language?: string,
   ) {
     const where: any = { role: 'DOCTOR', isActive: true };
 
@@ -31,13 +33,21 @@ export class SearchService {
       ];
     }
 
-    if (specialty || facilityId) {
-      where.doctorProfile = {};
+    // gender filter: User.sex field stores 'M' or 'F'
+    if (gender === 'male') where.sex = 'M';
+    if (gender === 'female') where.sex = 'F';
+
+    if (specialty || facilityId || language) {
+      where.doctorProfile = where.doctorProfile ?? {};
       if (specialty) {
         where.doctorProfile.specialty = { contains: specialty, mode: 'insensitive' };
       }
       if (facilityId) {
         where.doctorProfile.facilities = { some: { id: facilityId } };
+      }
+      // languages stored as JSON string "["Français","Anglais"]" — contains works fine
+      if (language) {
+        where.doctorProfile.languages = { contains: language, mode: 'insensitive' };
       }
     }
 
@@ -50,7 +60,6 @@ export class SearchService {
       const until = new Date();
       until.setDate(until.getDate() + days);
 
-      // Build set of ISO day-of-week numbers for the next N days (1=Mon, 7=Sun)
       const dowSet = new Set<number>();
       for (let i = 0; i < days; i++) {
         const d = new Date(today);

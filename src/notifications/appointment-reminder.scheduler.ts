@@ -48,6 +48,14 @@ export class AppointmentReminderScheduler {
       },
     });
 
+    // Load SMS opt-in preferences in bulk
+    const patientIds = [...new Set(appointments.map(a => a.patientId))];
+    const prefs = await (this.prisma as any).patientProfile.findMany({
+      where: { userId: { in: patientIds } },
+      select: { userId: true, smsReminderEnabled: true },
+    });
+    const smsEnabled = new Map(prefs.map((p: any) => [p.userId, p.smsReminderEnabled !== false]));
+
     this.logger.log(`Found ${appointments.length} appointment(s) scheduled for tomorrow`);
 
     // Prefetch doctor names for the relevant ownerIds
@@ -74,9 +82,9 @@ export class AppointmentReminderScheduler {
         this.logger.error(`Failed in-app reminder for appointment ${appointment.id}: ${error?.message}`);
       }
 
-      // SMS reminder
+      // SMS reminder — respect patient opt-out
       const phone = appointment.patient?.phone;
-      if (phone) {
+      if (phone && smsEnabled.get(appointment.patientId) !== false) {
         const timeStr = new Date(appointment.slot.start).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Brazzaville' });
         const doctorName = doctorMap[appointment.slot.ownerId] ?? 'votre médecin';
         const kindName = appointment.kind?.name ?? 'Consultation';

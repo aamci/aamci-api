@@ -14,8 +14,10 @@ export class SearchController {
     @Query('facilityId') facilityId?: string,
     @Query('availableIn') availableIn?: string,
     @Query('video') video?: string,
+    @Query('gender') gender?: string,
+    @Query('language') language?: string,
   ) {
-    return this.search.doctors(q, city, specialty, facilityId, availableIn, video);
+    return this.search.doctors(q, city, specialty, facilityId, availableIn, video, gender, language);
   }
 
   @Get('hospitals')

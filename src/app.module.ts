@@ -52,6 +52,8 @@ import { ReferralsModule } from './referrals/referrals.module';
 import { CorrespondencesModule } from './correspondences/correspondences.module';
 import { StorageModule } from './common/storage.module';
 import { WaitlistModule } from './waitlist/waitlist.module';
+import { QuestionnairesModule } from './questionnaires/questionnaires.module';
+import { BeneficiariesModule } from './beneficiaries/beneficiaries.module';
 
 @Module({
   imports: [
@@ -103,6 +105,8 @@ import { WaitlistModule } from './waitlist/waitlist.module';
     ReferralsModule,
     CorrespondencesModule,
     WaitlistModule,
+    QuestionnairesModule,
+    BeneficiariesModule,
   ],
   controllers: [HealthController],
   providers: [

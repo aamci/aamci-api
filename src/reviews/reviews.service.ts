@@ -10,14 +10,15 @@ export class ReviewsService {
   async create(patientId: string, createReviewDto: CreateReviewDto) {
     const { doctorId, appointmentId, ...reviewData } = createReviewDto;
 
-    // Verify doctor exists
-    const doctor = await this.prisma.doctorProfile.findUnique({
-      where: { id: doctorId },
-    });
-
+    // Verify doctor exists — accept either DoctorProfile.id or User.id
+    let doctor = await this.prisma.doctorProfile.findUnique({ where: { id: doctorId } });
+    if (!doctor) {
+      doctor = await this.prisma.doctorProfile.findUnique({ where: { userId: doctorId } });
+    }
     if (!doctor) {
       throw new NotFoundException('Doctor not found');
     }
+    const resolvedDoctorId = doctor.id;
 
     // If appointmentId provided, verify it belongs to this patient and doctor
     if (appointmentId) {
@@ -49,7 +50,7 @@ export class ReviewsService {
     // Create review
     const review = await this.prisma.doctorReview.create({
       data: {
-        doctorId,
+        doctorId: resolvedDoctorId,
         patientId,
         appointmentId,
         ...reviewData,
@@ -67,7 +68,7 @@ export class ReviewsService {
     });
 
     // Update doctor's average rating
-    await this.updateDoctorRating(doctorId);
+    await this.updateDoctorRating(resolvedDoctorId);
 
     return review;
   }

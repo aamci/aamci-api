@@ -1352,4 +1352,104 @@ export class AdminService {
       data: { failedAttempts: 0, lockedUntil: null },
     });
   }
+
+  // ─── Reviews moderation ──────────────────────────────────────────────────
+
+  async getReviews(params: { page?: number; limit?: number; isApproved?: boolean; isReported?: boolean; search?: string }) {
+    const page  = Math.max(1, params.page ?? 1);
+    const limit = Math.min(100, Math.max(1, params.limit ?? 20));
+    const skip  = (page - 1) * limit;
+
+    const where: any = {};
+    if (params.isApproved !== undefined) where.isApproved = params.isApproved;
+    if (params.isReported !== undefined) where.isReported = params.isReported;
+    if (params.search) {
+      where.OR = [
+        { comment: { contains: params.search, mode: 'insensitive' } },
+        { patient: { fullName: { contains: params.search, mode: 'insensitive' } } },
+        { doctor: { user: { fullName: { contains: params.search, mode: 'insensitive' } } } },
+      ];
+    }
+
+    const [reviews, total] = await Promise.all([
+      this.prisma.doctorReview.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          patient:  { select: { id: true, fullName: true, email: true, avatarUrl: true } },
+          doctor:   { select: { id: true, user: { select: { fullName: true, email: true } } } },
+        },
+      }),
+      this.prisma.doctorReview.count({ where }),
+    ]);
+
+    return { reviews, total, page, limit, pages: Math.ceil(total / limit) };
+  }
+
+  async moderateReview(id: string, data: { isApproved?: boolean; isReported?: boolean }) {
+    const review = await this.prisma.doctorReview.findUnique({ where: { id } });
+    if (!review) throw new NotFoundException('Avis non trouvé');
+    return this.prisma.doctorReview.update({ where: { id }, data });
+  }
+
+  async deleteReview(id: string, adminId: string) {
+    const review = await this.prisma.doctorReview.findUnique({ where: { id } });
+    if (!review) throw new NotFoundException('Avis non trouvé');
+    await this.prisma.doctorReview.delete({ where: { id } });
+    await this.logAudit(adminId, 'DELETE_REVIEW', id, 'REVIEW', {});
+    return { ok: true };
+  }
+
+  // ─── Doctor verification ─────────────────────────────────────────────────
+
+  async getPendingDoctors() {
+    const all = await (this.prisma as any).user.findMany({
+      where: { role: 'DOCTOR' },
+      include: {
+        doctorProfile: { select: { id: true, specialty: true, city: true, isVerified: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return (all as any[]).filter((u: any) => u.doctorProfile && !u.doctorProfile.isVerified);
+  }
+
+  async verifyDoctor(userId: string, adminId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { doctorProfile: true } });
+    if (!user || user.role !== 'DOCTOR') throw new NotFoundException('Médecin non trouvé');
+    await (this.prisma as any).doctorProfile.update({
+      where: { userId },
+      data: { isVerified: true },
+    });
+    await this.prisma.user.update({ where: { id: userId }, data: { isActive: true } });
+    await this.logAudit(adminId, 'VERIFY_DOCTOR', userId, 'USER', {});
+    return { ok: true };
+  }
+
+  async rejectDoctor(userId: string, adminId: string, reason?: string) {
+    await this.prisma.user.update({ where: { id: userId }, data: { isActive: false } });
+    await this.logAudit(adminId, 'REJECT_DOCTOR', userId, 'USER', { reason });
+    return { ok: true };
+  }
+
+  // ─── Appointment status + refund ─────────────────────────────────────────
+
+  async updateAppointmentStatus(id: string, status: string, adminId: string) {
+    const appt = await this.prisma.appointment.findUnique({ where: { id } });
+    if (!appt) throw new NotFoundException('Rendez-vous non trouvé');
+    const updated = await this.prisma.appointment.update({ where: { id }, data: { status: status as any } });
+    await this.logAudit(adminId, 'UPDATE_APPOINTMENT_STATUS', id, 'APPOINTMENT', { from: appt.status, to: status });
+    return updated;
+  }
+
+  async getAlerts() {
+    const [urgentTickets, lockedAccounts, pendingDoctors, failedTransactions] = await Promise.all([
+      this.prisma.supportTicket.count({ where: { status: 'OPEN', priority: 'URGENT' } }).catch(() => 0),
+      this.prisma.twoFactorAuth.count({ where: { lockedUntil: { gt: new Date() } } }).catch(() => 0),
+      (this.prisma as any).doctorProfile.count({ where: { isVerified: false } }).catch(() => 0),
+      this.prisma.transaction.count({ where: { status: 'FAILED', createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } }).catch(() => 0),
+    ]);
+    return { urgentTickets, lockedAccounts, pendingDoctors, failedTransactions };
+  }
 }

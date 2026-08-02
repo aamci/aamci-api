@@ -125,4 +125,15 @@ export class PrescriptionsController {
     const doctorId = req.user.userId;
     return this.svc.delete(id, doctorId);
   }
+
+  // ── Patient-facing: request renewal ───────────────────────────────────────
+
+  @Post(':id/request-renewal')
+  async requestRenewal(
+    @Param('id') id: string,
+    @Req() req,
+    @Body() body: { message?: string },
+  ) {
+    return this.svc.requestRenewal(id, req.user.userId, body.message);
+  }
 }

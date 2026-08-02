@@ -108,6 +108,11 @@ export class PaymentsService {
       // - marquer un rendez-vous "PAYÉ"
     }
 
+    if (event.type === 'payment_intent.succeeded') {
+      const pi = event.data.object as any;
+      await this.confirmPrepayment(pi.id).catch(() => {});
+    }
+
     if (event.type === 'checkout.session.expired' || event.type === 'checkout.session.async_payment_failed') {
       const session = event.data.object as Stripe.Checkout.Session;
       const txId = session.metadata?.app_transaction_id;
@@ -119,5 +124,97 @@ export class PaymentsService {
     }
 
     return { received: true };
+  }
+
+  // ── Pré-paiement à la réservation ─────────────────────────────────────────
+
+  async createPrepayIntent(appointmentId: string, patientId: string) {
+    const appt = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: {
+        kind: true,
+        slot: true,
+        patient: true,
+      },
+    });
+    if (!appt) throw new BadRequestException('Rendez-vous introuvable');
+    if (appt.patientId !== patientId) throw new BadRequestException('Accès refusé');
+
+    const kind = appt.kind as any;
+    if (!kind?.requiresPrePayment) throw new BadRequestException('Ce type de consultation ne nécessite pas de pré-paiement');
+
+    // XAF is a zero-decimal currency in Stripe (no cents multiplication)
+    const amount = Math.round(Number(kind.price ?? 5000));
+
+    const intent = await this.stripe.paymentIntents.create({
+      amount,
+      currency: 'xaf',
+      payment_method_types: ['card'],
+      metadata: {
+        appointment_id: appointmentId,
+        patient_id: patientId,
+        kind_id: kind.id,
+      },
+    });
+
+    // Mark appointment as prepayment pending
+    await (this.prisma as any).appointment.update({
+      where: { id: appointmentId },
+      data: {
+        prepaidPaymentIntentId: intent.id,
+        prepaidStatus: 'PENDING',
+        prepaidAmount: amount,
+      },
+    });
+
+    return { clientSecret: intent.client_secret, amount, currency: 'xaf' };
+  }
+
+  async confirmPrepayment(paymentIntentId: string) {
+    const appt = await (this.prisma as any).appointment.findFirst({
+      where: { prepaidPaymentIntentId: paymentIntentId },
+      include: { slot: true },
+    });
+    if (!appt) return { ok: true };
+
+    await (this.prisma as any).appointment.update({
+      where: { id: appt.id },
+      data: { prepaidStatus: 'PAID' },
+    });
+
+    await this.prisma.transaction.create({
+      data: {
+        doctorId: appt.slot?.ownerId ?? appt.doctorId ?? 'unknown',
+        patientId: appt.patientId,
+        appointmentId: appt.id,
+        amount: appt.prepaidAmount ?? 0,
+        type: 'PAYMENT',
+        status: 'SUCCESS',
+        provider: 'STRIPE',
+        providerRef: paymentIntentId,
+        description: 'Pré-paiement consultation',
+      },
+    });
+
+    return { ok: true };
+  }
+
+  async refundPrepayment(appointmentId: string, doctorId: string) {
+    const appt = await (this.prisma as any).appointment.findUnique({
+      where: { id: appointmentId },
+      include: { slot: true },
+    });
+    if (!appt) throw new BadRequestException('Rendez-vous introuvable');
+    if (appt.slot?.ownerId !== doctorId) throw new BadRequestException('Accès refusé');
+    if (appt.prepaidStatus !== 'PAID') throw new BadRequestException('Paiement non effectué');
+
+    await this.stripe.refunds.create({ payment_intent: appt.prepaidPaymentIntentId });
+
+    await (this.prisma as any).appointment.update({
+      where: { id: appointmentId },
+      data: { prepaidStatus: 'REFUNDED', prepaidRefundedAt: new Date() },
+    });
+
+    return { success: true };
   }
 }

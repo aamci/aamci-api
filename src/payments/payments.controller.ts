@@ -2,6 +2,7 @@
 import {
   Body,
   Controller,
+  Param,
   Post,
   Req,
   Res,
@@ -59,5 +60,34 @@ export class PaymentsController {
   async webhook(@Body() payload: any) {
     await this.airtel.handleWebhook(payload);
     return { received: true };
+  }
+
+  // ── Pré-paiement ──────────────────────────────────────────────────────────
+
+  @UseGuards(JwtAuthGuard)
+  @Post('prepay/:appointmentId/create-intent')
+  async createPrepayIntent(
+    @Param('appointmentId') appointmentId: string,
+    @Req() req,
+  ) {
+    return this.payments.createPrepayIntent(appointmentId, req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('prepay/:appointmentId/confirm')
+  async confirmPrepayment(
+    @Param('appointmentId') appointmentId: string,
+    @Body() body: { paymentIntentId: string },
+  ) {
+    return this.payments.confirmPrepayment(body.paymentIntentId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('prepay/:appointmentId/refund')
+  async refundPrepayment(
+    @Param('appointmentId') appointmentId: string,
+    @Req() req,
+  ) {
+    return this.payments.refundPrepayment(appointmentId, req.user.userId);
   }
 }

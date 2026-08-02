@@ -476,4 +476,60 @@ export class PrescriptionsService {
 
     return { message: 'Ordonnance supprimée avec succès' };
   }
+
+  // ── Patient: demande de renouvellement ────────────────────────────────────
+
+  async requestRenewal(prescriptionId: string, patientId: string, customMessage?: string) {
+    const prescription = await this.prisma.prescription.findUnique({
+      where: { id: prescriptionId },
+      include: {
+        medications: true,
+        doctor: { select: { id: true, fullName: true } },
+        patient: { select: { fullName: true } },
+      },
+    });
+
+    if (!prescription) throw new NotFoundException('Ordonnance non trouvée');
+    if (prescription.patientId !== patientId) throw new ForbiddenException();
+
+    const medList = prescription.medications
+      .map((m: any) => `• ${m.name}${m.dosage ? ` ${m.dosage}` : ''}`)
+      .join('\n');
+
+    const msgContent = [
+      `📋 Demande de renouvellement d'ordonnance`,
+      ``,
+      `Bonjour Dr ${prescription.doctor?.fullName ?? ''},`,
+      ``,
+      `Je souhaite renouveler mon ordonnance du ${new Date(prescription.createdAt).toLocaleDateString('fr-FR')} contenant :`,
+      medList,
+      ``,
+      customMessage ? `Message : ${customMessage}` : '',
+      ``,
+      `Merci,`,
+      prescription.patient?.fullName ?? '',
+    ].filter(l => l !== undefined).join('\n');
+
+    // Find or create conversation with doctor
+    const existing = await this.prisma.conversation.findFirst({
+      where: {
+        OR: [
+          { participant1Id: patientId, participant2Id: prescription.doctorId },
+          { participant1Id: prescription.doctorId, participant2Id: patientId },
+        ],
+      },
+    });
+
+    const conversationId = existing
+      ? existing.id
+      : (await this.prisma.conversation.create({
+          data: { participant1Id: patientId, participant2Id: prescription.doctorId },
+        })).id;
+
+    await this.prisma.message.create({
+      data: { conversationId, senderId: patientId, content: msgContent },
+    });
+
+    return { ok: true, conversationId };
+  }
 }

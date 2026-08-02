@@ -614,4 +614,80 @@ export class PatientRecordService {
       },
     });
   }
+
+  // ──────────────────────────────────────────
+  // PARTAGE DU DOSSIER
+  // ──────────────────────────────────────────
+
+  async shareDossier(patientId: string, doctorId: string, customNote?: string) {
+    const [patient, doctor, profile, prescriptions, healthRecord] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: patientId }, select: { fullName: true, birthdate: true, sex: true } }),
+      this.prisma.user.findUnique({ where: { id: doctorId }, select: { id: true, fullName: true, role: true } }),
+      this.prisma.patientProfile.findUnique({ where: { userId: patientId } }),
+      this.prisma.prescription.findMany({
+        where: { patientId, status: 'ACTIVE' },
+        include: { medications: true },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+      this.prisma.healthRecord.findUnique({ where: { patientId } }).catch(() => null),
+    ]);
+
+    if (!doctor) throw new NotFoundException('Médecin introuvable');
+
+    const lines: string[] = [
+      `📁 Partage de dossier médical`,
+      ``,
+      `Bonjour Dr ${doctor.fullName ?? ''},`,
+      ``,
+      `Je vous partage un résumé de mon dossier médical.`,
+      ``,
+      `── Patient ──`,
+      `Nom : ${patient?.fullName ?? 'N/A'}`,
+      `Sexe : ${patient?.sex === 'F' ? 'Féminin' : patient?.sex === 'M' ? 'Masculin' : 'N/A'}`,
+      `Date de naissance : ${patient?.birthdate ? new Date(patient.birthdate).toLocaleDateString('fr-FR') : 'N/A'}`,
+    ];
+
+    if ((profile as any)?.bloodGroup) lines.push(`Groupe sanguin : ${(profile as any).bloodGroup}`);
+    if ((profile as any)?.allergies) lines.push(`Allergies connues : ${(profile as any).allergies}`);
+    if ((profile as any)?.chronicConditions) lines.push(`Pathologies chroniques : ${(profile as any).chronicConditions}`);
+
+    if (prescriptions.length > 0) {
+      lines.push(``, `── Traitements en cours ──`);
+      prescriptions.forEach((p: any) => {
+        p.medications.forEach((m: any) => {
+          lines.push(`• ${m.name}${m.dosage ? ` — ${m.dosage}` : ''}${m.frequency ? `, ${m.frequency}` : ''}`);
+        });
+      });
+    }
+
+    if (customNote) {
+      lines.push(``, `── Note ──`, customNote);
+    }
+
+    lines.push(``, `Cordialement,`, patient?.fullName ?? '');
+
+    const content = lines.join('\n');
+
+    const existing = await this.prisma.conversation.findFirst({
+      where: {
+        OR: [
+          { participant1Id: patientId, participant2Id: doctorId },
+          { participant1Id: doctorId, participant2Id: patientId },
+        ],
+      },
+    });
+
+    const conversationId = existing
+      ? existing.id
+      : (await this.prisma.conversation.create({
+          data: { participant1Id: patientId, participant2Id: doctorId },
+        })).id;
+
+    await this.prisma.message.create({
+      data: { conversationId, senderId: patientId, content },
+    });
+
+    return { ok: true, conversationId };
+  }
 }

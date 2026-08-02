@@ -45,6 +45,8 @@ export class AppointmentKindsService {
       isTelemedicine?: boolean;
       durationMins?: number;
       color?: string;
+      requiresPrePayment?: boolean;
+      price?: number;
     }
   ) {
     return this.prisma.appointmentKind.create({
@@ -55,7 +57,9 @@ export class AppointmentKindsService {
         isTelemedicine: dto.isTelemedicine ?? false,
         durationMins: dto.durationMins ?? 30,
         color: dto.color,
-      },
+        requiresPrePayment: dto.requiresPrePayment ?? false,
+        price: dto.price ?? null,
+      } as any,
     });
   }
 
@@ -68,6 +72,8 @@ export class AppointmentKindsService {
       isTelemedicine?: boolean;
       durationMins?: number;
       color?: string;
+      requiresPrePayment?: boolean;
+      price?: number | null;
     }
   ) {
     // Vérifier que le kind appartient au médecin
@@ -87,7 +93,9 @@ export class AppointmentKindsService {
         isTelemedicine: dto.isTelemedicine,
         durationMins: dto.durationMins,
         color: dto.color,
-      },
+        requiresPrePayment: dto.requiresPrePayment,
+        price: dto.price,
+      } as any,
     });
   }
 
