@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Res, HttpCode, HttpStatus, UseGuards, Get, Req, Query, UsePipes, ValidationPipe, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Post, Delete, Res, HttpCode, HttpStatus, UseGuards, Get, Req, Query, UsePipes, ValidationPipe, BadRequestException } from '@nestjs/common';
 import { Response, Request } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
@@ -22,12 +22,17 @@ export class AuthController {
 
   @Post('register')
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // Max 3 registrations per minute
-  async register(@Body() registerDto: RegisterDto) {
+  async register(@Body() registerDto: RegisterDto, @Req() req: Request) {
+    const ip = (req.headers as any)['x-forwarded-for']?.split(',')[0]?.trim()
+      ?? (req as any).socket?.remoteAddress
+      ?? 'unknown';
     const result = await this.auth.register(
       registerDto.email,
       registerDto.password,
       registerDto.role ?? 'PATIENT',
       registerDto.fullName,
+      ip,
+      registerDto.consentedToTerms ?? false,
     );
 
     // Ne pas set le cookie, attendre la vérification d'email
@@ -151,6 +156,20 @@ export class AuthController {
   async resetPassword(@Body() dto: ResetPasswordDto) {
     await this.auth.resetPassword(dto.token, dto.password);
     return { message: 'Mot de passe réinitialisé avec succès.' };
+  }
+
+  @Delete('account')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async deleteAccount(@Req() req: any, @Res({ passthrough: true }) res: Response) {
+    await this.auth.deleteAccount(req.user.userId);
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+    return { success: true, message: 'Compte supprimé avec succès' };
   }
 
   private setAuthCookie(res: Response, token: string) {

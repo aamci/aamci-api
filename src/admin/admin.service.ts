@@ -1452,4 +1452,85 @@ export class AdminService {
     ]);
     return { urgentTickets, lockedAccounts, pendingDoctors, failedTransactions };
   }
+
+  // ─── Waitlist supervision ─────────────────────────────────────────────────
+
+  async getWaitlist(params: {
+    page?: number; limit?: number; status?: string; doctorId?: string; search?: string;
+  }) {
+    const { page = 1, limit = 20, status, doctorId, search } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (status) where.status = status;
+    if (doctorId) where.doctorId = doctorId;
+    if (search) {
+      where.OR = [
+        { patient: { fullName: { contains: search, mode: 'insensitive' } } },
+        { patient: { email: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
+
+    const [entries, total] = await Promise.all([
+      (this.prisma as any).waitlistEntry.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: [{ date: 'asc' }, { position: 'asc' }],
+        include: {
+          patient: { select: { id: true, fullName: true, email: true, phone: true } },
+          doctor: { select: { id: true, fullName: true, email: true } },
+        },
+      }).catch(() => []),
+      (this.prisma as any).waitlistEntry.count({ where }).catch(() => 0),
+    ]);
+
+    return { entries, total, page, limit, pages: Math.ceil(total / limit) };
+  }
+
+  async removeWaitlistEntry(id: string, adminId: string) {
+    await (this.prisma as any).waitlistEntry.delete({ where: { id } });
+    await this.logAudit(adminId, 'DELETE_WAITLIST_ENTRY', id, 'WAITLIST_ENTRY', {});
+    return { ok: true };
+  }
+
+  // ─── Questionnaires supervision ───────────────────────────────────────────
+
+  async getQuestionnaires(params: {
+    page?: number; limit?: number; search?: string; isActive?: boolean;
+  }) {
+    const { page = 1, limit = 20, search, isActive } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (isActive !== undefined) where.isActive = isActive;
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { doctor: { user: { fullName: { contains: search, mode: 'insensitive' } } } },
+      ];
+    }
+
+    const [questionnaires, total] = await Promise.all([
+      (this.prisma as any).questionnaire.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          doctor: { include: { user: { select: { id: true, fullName: true, email: true } } } },
+          _count: { select: { questions: true, responses: true } },
+        },
+      }).catch(() => []),
+      (this.prisma as any).questionnaire.count({ where }).catch(() => 0),
+    ]);
+
+    return { questionnaires, total, page, limit, pages: Math.ceil(total / limit) };
+  }
+
+  async toggleQuestionnaire(id: string, isActive: boolean, adminId: string) {
+    const q = await (this.prisma as any).questionnaire.update({ where: { id }, data: { isActive } });
+    await this.logAudit(adminId, 'TOGGLE_QUESTIONNAIRE', id, 'QUESTIONNAIRE', { isActive });
+    return q;
+  }
 }

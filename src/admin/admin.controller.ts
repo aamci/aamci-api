@@ -13,6 +13,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
+import { DataPurgeService } from '../common/data-purge.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 const ADMIN_ROLES = ['ADMIN', 'ADMIN_WRITE', 'ADMIN_READ', 'GUEST'];
@@ -33,7 +34,10 @@ function requireAdminWrite(user: any) {
 @Controller('admin')
 @UseGuards(JwtAuthGuard)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly dataPurge: DataPurgeService,
+  ) {}
 
   // ─── Users ───────────────────────────────────────────────────────────────
 
@@ -563,6 +567,58 @@ export class AdminController {
     return this.adminService.getAlerts();
   }
 
+  // ─── Waitlist supervision ─────────────────────────────────────────────────
+
+  @Get('waitlist')
+  async getWaitlist(
+    @Req() req,
+    @Query('page')     page?: string,
+    @Query('limit')    limit?: string,
+    @Query('status')   status?: string,
+    @Query('doctorId') doctorId?: string,
+    @Query('search')   search?: string,
+  ) {
+    requireAdminAccess(req.user);
+    return this.adminService.getWaitlist({
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 20,
+      status,
+      doctorId,
+      search,
+    });
+  }
+
+  @Delete('waitlist/:id')
+  async removeWaitlistEntry(@Req() req, @Param('id') id: string) {
+    requireAdminWrite(req.user);
+    return this.adminService.removeWaitlistEntry(id, req.user.id);
+  }
+
+  // ─── Questionnaires supervision ───────────────────────────────────────────
+
+  @Get('questionnaires')
+  async getQuestionnaires(
+    @Req() req,
+    @Query('page')     page?: string,
+    @Query('limit')    limit?: string,
+    @Query('search')   search?: string,
+    @Query('isActive') isActive?: string,
+  ) {
+    requireAdminAccess(req.user);
+    return this.adminService.getQuestionnaires({
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 20,
+      search,
+      isActive: isActive !== undefined ? isActive === 'true' : undefined,
+    });
+  }
+
+  @Patch('questionnaires/:id/toggle')
+  async toggleQuestionnaire(@Req() req, @Param('id') id: string, @Body() body: { isActive: boolean }) {
+    requireAdminWrite(req.user);
+    return this.adminService.toggleQuestionnaire(id, body.isActive, req.user.id);
+  }
+
   // ─── 2FA Admin ───────────────────────────────────────────────────────────
 
   @Get('2fa/stats')
@@ -598,5 +654,14 @@ export class AdminController {
   async unlock2fa(@Req() req, @Param('id') id: string) {
     requireAdminWrite(req.user);
     return this.adminService.unlock2faForUser(id);
+  }
+
+  // ─── Maintenance ─────────────────────────────────────────────────────────
+
+  @Post('maintenance/purge')
+  async triggerPurge(@Req() req) {
+    requireAdminWrite(req.user);
+    await this.dataPurge.purgeOldData();
+    return { success: true, message: 'Purge des données exécutée avec succès' };
   }
 }

@@ -17,7 +17,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async register(email: string, password: string, role: Role = 'PATIENT', fullName?: string) {
+  async register(email: string, password: string, role: Role = 'PATIENT', fullName?: string, ipAddress?: string, consentedToTerms = false) {
     const exists = await this.users.findByEmail(email);
     if (exists) {
       // 409 plus parlant que 401 ici
@@ -40,6 +40,32 @@ export class AuthService {
         tokenExpiry,
       },
     });
+
+    // Enregistrer le consentement (CARE obligatoire + EMAIL_COMMUNICATION si accepté)
+    const now = new Date();
+    if (role === 'PATIENT') {
+      await (this.prisma as any).patientConsent.createMany({
+        data: [
+          {
+            patientId: user.id,
+            type: 'CARE',
+            granted: true,
+            grantedAt: now,
+            signedAt: now,
+            ipAddress: ipAddress ?? 'unknown',
+          },
+          {
+            patientId: user.id,
+            type: 'EMAIL_COMMUNICATION',
+            granted: consentedToTerms,
+            grantedAt: consentedToTerms ? now : null,
+            signedAt: consentedToTerms ? now : null,
+            ipAddress: ipAddress ?? 'unknown',
+          },
+        ],
+        skipDuplicates: true,
+      });
+    }
 
     // Envoyer l'email de vérification
     try {
@@ -214,6 +240,14 @@ export class AuthService {
         resetPasswordExpiry: null,
       } as any,
     });
+  }
+
+  async deleteAccount(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new BadRequestException('Compte introuvable');
+    }
+    await this.prisma.user.delete({ where: { id: userId } });
   }
 
   private sign(sub: string, email: string, role: Role) {

@@ -6,6 +6,7 @@ import { CustomThrottlerGuard } from './common/throttler.guard';
 import { HealthModule } from './health/health.module';
 import { PrismaService } from './common/prisma.service';
 import { DatabaseHealthService } from './common/database-health.service';
+import { DataPurgeService } from './common/data-purge.service';
 import { HealthController } from './common/health.controller';
 import {
   PrismaClientExceptionFilter,
@@ -112,6 +113,7 @@ import { BeneficiariesModule } from './beneficiaries/beneficiaries.module';
   providers: [
     PrismaService,
     DatabaseHealthService,
+    DataPurgeService,
     // Apply throttler globally
     {
       provide: APP_GUARD,

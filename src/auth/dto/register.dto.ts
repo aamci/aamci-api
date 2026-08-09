@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsEnum, IsOptional } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, IsEnum, IsOptional, IsBoolean } from 'class-validator';
 
 enum Role {
   PATIENT = 'PATIENT',
@@ -19,7 +19,7 @@ export class RegisterDto {
 
   @IsString({ message: 'Le mot de passe doit être une chaîne de caractères' })
   @IsNotEmpty({ message: 'Le mot de passe est obligatoire' })
-  @MinLength(6, { message: 'Le mot de passe doit contenir au moins 6 caractères' })
+  @MinLength(8, { message: 'Le mot de passe doit contenir au moins 8 caractères' })
   password: string;
 
   @IsOptional()
@@ -29,4 +29,8 @@ export class RegisterDto {
   @IsOptional()
   @IsEnum(Role, { message: 'Le rôle doit être PATIENT, DOCTOR, PHARMACY, HOSPITAL ou ADMIN' })
   role?: Role;
+
+  @IsOptional()
+  @IsBoolean()
+  consentedToTerms?: boolean;
 }
