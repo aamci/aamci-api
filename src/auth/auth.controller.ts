@@ -75,12 +75,7 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   getProfile(@Req() req: any) {
-    // req.user is populated by JwtAuthGuard
-    return {
-      id: req.user.userId,
-      email: req.user.email,
-      role: req.user.role,
-    };
+    return this.auth.getMe(req.user.userId);
   }
 
   // Google OAuth

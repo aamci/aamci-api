@@ -69,11 +69,8 @@ export class FacilitiesService {
     limit: number = 20,
   ) {
     const where: any = {
-      facilities: {
-        some: {
-          id: facilityId,
-        },
-      },
+      facilities: { some: { id: facilityId } },
+      user: { isActive: true },
     };
 
     if (specialtyId) {

@@ -242,6 +242,21 @@ export class AuthService {
     });
   }
 
+  async getMe(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        fullName: true,
+        avatarUrl: true,
+        phone: true,
+        city: true,
+      },
+    });
+  }
+
   async deleteAccount(userId: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
