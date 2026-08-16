@@ -19,8 +19,40 @@ export class AuthService {
 
   async register(email: string, password: string, role: Role = 'PATIENT', fullName?: string, ipAddress?: string, consentedToTerms = false) {
     const exists = await this.users.findByEmail(email);
+
+    // Compte en attente de suppression → réactivation
+    if (exists && !(exists as any).isActive && (exists as any).scheduledDeletionAt) {
+      const hash = await argon2.hash(password);
+      await this.prisma.user.update({
+        where: { id: exists.id },
+        data: {
+          isActive: true,
+          deletedAt: null,
+          scheduledDeletionAt: null,
+          password: hash,
+          fullName: fullName ?? exists.fullName,
+          emailVerified: false,
+          verificationToken: null,
+          tokenExpiry: null,
+        } as any,
+      });
+      // Renvoyer la vérification email pour le compte réactivé
+      const token = require('crypto').randomBytes(32).toString('hex');
+      const expiry = new Date();
+      expiry.setHours(expiry.getHours() + 1);
+      await this.prisma.user.update({
+        where: { id: exists.id },
+        data: { verificationToken: token, tokenExpiry: expiry },
+      });
+      await this.email.sendVerificationEmail(exists.email, token, fullName ?? exists.fullName ?? undefined, exists.role);
+      return {
+        message: 'Compte réactivé. Vérifiez votre email pour confirmer.',
+        email: exists.email,
+        requiresVerification: true,
+      };
+    }
+
     if (exists) {
-      // 409 plus parlant que 401 ici
       throw new ConflictException('Email already registered');
     }
 
@@ -87,17 +119,20 @@ export class AuthService {
     const user = await this.users.findByEmail(email);
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
-    // Vérifier si l'utilisateur a un mot de passe (OAuth users n'en ont pas)
+    // Compte en cours de suppression
+    if (!user.isActive && (user as any).scheduledDeletionAt) {
+      throw new UnauthorizedException(
+        'Ce compte est en cours de suppression. Vos données seront effacées dans 30 jours. Contactez support@ibogha241.ga pour annuler.',
+      );
+    }
+
     if (!user.password) {
       throw new UnauthorizedException('Please use social login (Google or Facebook)');
     }
 
-    // délègue la vérification du hash au UsersService
-
     const ok = await this.users.validatePassword(user.password, password);
     if (!ok) throw new UnauthorizedException('Invalid credentials');
 
-    // Vérifier si l'email est vérifié
     if (!user.emailVerified) {
       throw new UnauthorizedException('Please verify your email before logging in. Check your inbox for the verification link.');
     }
@@ -262,7 +297,21 @@ export class AuthService {
     if (!user) {
       throw new BadRequestException('Compte introuvable');
     }
-    await this.prisma.user.delete({ where: { id: userId } });
+    const scheduledDeletionAt = new Date();
+    scheduledDeletionAt.setDate(scheduledDeletionAt.getDate() + 30);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        isActive: false,
+        deletedAt: new Date(),
+        scheduledDeletionAt,
+      } as any,
+    });
+    try {
+      await this.email.sendAccountDeletionConfirmation(user.email, user.fullName || undefined);
+    } catch (error) {
+      console.error('Failed to send account deletion email:', error);
+    }
   }
 
   private sign(sub: string, email: string, role: Role) {

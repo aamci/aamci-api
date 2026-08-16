@@ -55,6 +55,7 @@ import { StorageModule } from './common/storage.module';
 import { WaitlistModule } from './waitlist/waitlist.module';
 import { QuestionnairesModule } from './questionnaires/questionnaires.module';
 import { BeneficiariesModule } from './beneficiaries/beneficiaries.module';
+import { CleanupModule } from './cleanup/cleanup.module';
 
 @Module({
   imports: [
@@ -108,6 +109,7 @@ import { BeneficiariesModule } from './beneficiaries/beneficiaries.module';
     WaitlistModule,
     QuestionnairesModule,
     BeneficiariesModule,
+    CleanupModule,
   ],
   controllers: [HealthController],
   providers: [

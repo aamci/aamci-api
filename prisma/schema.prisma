@@ -19,7 +19,9 @@ model User {
   sex                String?
   birthdate          DateTime?
   city               String?
-  isActive           Boolean           @default(true)
+  isActive              Boolean           @default(true)
+  deletedAt             DateTime?         // Date de la demande de suppression
+  scheduledDeletionAt   DateTime?         // Suppression définitive prévue (deletedAt + 30j)
   emailVerified      Boolean           @default(false)
   verificationToken     String?           @unique
   tokenExpiry           DateTime?
