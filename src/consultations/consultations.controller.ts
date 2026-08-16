@@ -27,6 +27,12 @@ export class ConsultationsController {
     return this.svc.create(doctorId, dto);
   }
 
+  @Get('mine')
+  async listMine(@Req() req) {
+    const doctorId = req.user.userId;
+    return this.svc.listForDoctor(doctorId);
+  }
+
   @Get('patient/:patientId')
   async listForPatient(
     @Param('patientId') patientId: string,

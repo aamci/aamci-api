@@ -69,6 +69,25 @@ export class ConsultationsService {
     });
   }
 
+  async listForDoctor(doctorId: string) {
+    return this.prisma.consultation.findMany({
+      where: { doctorId },
+      include: {
+        patient: {
+          select: { id: true, fullName: true, email: true },
+        },
+        appointment: {
+          select: {
+            id: true,
+            type: true,
+            slot: { select: { start: true, end: true } },
+          },
+        },
+      },
+      orderBy: { startedAt: 'desc' },
+    });
+  }
+
   /**
    * Récupérer les consultations d'un patient par un médecin
    */

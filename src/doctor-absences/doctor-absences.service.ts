@@ -12,7 +12,7 @@ export class DoctorAbsencesService {
     const startDate = new Date(dto.startDate);
     const endDate = new Date(dto.endDate);
 
-    if (startDate >= endDate) {
+    if (startDate > endDate) {
       throw new BadRequestException('End date must be after start date');
     }
 
