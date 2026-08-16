@@ -383,10 +383,11 @@ export class AppointmentsService {
 
     // Contrôle de propriété
     const isOwner = appt.slot.ownerId === requesterId;
+    const isPatient = appt.patientId === requesterId && status === 'CANCELLED';
     const canManage = !isOwner && ['FACILITY_MANAGER', 'SECRETARY'].includes(role ?? '') &&
       await this.managerCanManage(requesterId, appt.slot.ownerId);
 
-    if (!isOwner && !canManage) {
+    if (!isOwner && !isPatient && !canManage) {
       throw new ForbiddenException('Vous ne pouvez modifier que les rendez-vous de vos créneaux.');
     }
 
