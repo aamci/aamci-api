@@ -391,6 +391,19 @@ export class AppointmentsService {
       throw new ForbiddenException('Vous ne pouvez modifier que les rendez-vous de vos créneaux.');
     }
 
+    // Politique d'annulation patient : interdit si < 24h avant le RDV,
+    // sauf si la réservation date de moins d'1h (délai de grâce)
+    if (isPatient) {
+      const now = new Date();
+      const hoursUntilAppt = (appt.slot.start.getTime() - now.getTime()) / 3_600_000;
+      const minutesSinceBooking = (now.getTime() - appt.createdAt.getTime()) / 60_000;
+      if (hoursUntilAppt < 24 && minutesSinceBooking > 60) {
+        throw new ForbiddenException(
+          'Annulation impossible : le rendez-vous est dans moins de 24 heures.',
+        );
+      }
+    }
+
     const oldStatus = appt.status;
 
     // Mettre à jour le statut du rendez-vous
