@@ -91,14 +91,27 @@ export class AppointmentsService {
     }
 
     // Patient
-    return this.prisma.appointment.findMany({
+    const appointments = await this.prisma.appointment.findMany({
       where: { patientId: userId },
       orderBy: { createdAt: 'desc' },
       include: {
         slot: true,
         kind: true,
+        facility: { select: { name: true, address: true, city: true } },
       },
     });
+
+    const ownerIds = [...new Set(appointments.map(a => a.slot.ownerId))];
+    const doctors = await this.prisma.user.findMany({
+      where: { id: { in: ownerIds } },
+      select: { id: true, fullName: true },
+    });
+    const doctorMap = new Map(doctors.map(d => [d.id, d]));
+
+    return appointments.map(a => ({
+      ...a,
+      doctor: doctorMap.get(a.slot.ownerId) ?? null,
+    }));
   }
 
   // Vérifie si une secrétaire (TeamMember) ou un gestionnaire (FacilityManager) peut gérer ce médecin
