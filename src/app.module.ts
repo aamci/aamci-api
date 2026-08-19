@@ -56,6 +56,8 @@ import { WaitlistModule } from './waitlist/waitlist.module';
 import { QuestionnairesModule } from './questionnaires/questionnaires.module';
 import { BeneficiariesModule } from './beneficiaries/beneficiaries.module';
 import { CleanupModule } from './cleanup/cleanup.module';
+import { ReportsModule } from './reports/reports.module';
+import { BlocksModule } from './blocks/blocks.module';
 
 @Module({
   imports: [
@@ -110,6 +112,8 @@ import { CleanupModule } from './cleanup/cleanup.module';
     QuestionnairesModule,
     BeneficiariesModule,
     CleanupModule,
+    ReportsModule,
+    BlocksModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -1,12 +1,14 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { BlocksService } from '../blocks/blocks.service';
 
 @Injectable()
 export class MessagesService {
   constructor(
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
+    private blocksService: BlocksService,
   ) {}
 
   /**
@@ -58,9 +60,13 @@ export class MessagesService {
       orderBy: { updatedAt: 'desc' },
     });
 
-    // Compter les messages non lus par conversation
+    // Compter les messages non lus par conversation (exclure les conv avec utilisateurs bloqués)
     const conversationsWithUnread = await Promise.all(
       conversations.map(async (conv) => {
+        const otherId =
+          conv.participant1Id === userId ? conv.participant2Id : conv.participant1Id;
+        const blocked = await this.blocksService.eitherBlocked(userId, otherId);
+
         const unreadCount = await this.prisma.message.count({
           where: {
             conversationId: conv.id,
@@ -76,9 +82,10 @@ export class MessagesService {
         return {
           id: conv.id,
           otherParticipant,
-          lastMessage: lastMessage?.content || null,
+          lastMessage: blocked ? null : (lastMessage?.content || null),
           lastMessageTime: lastMessage?.createdAt || conv.createdAt,
-          unreadCount,
+          unreadCount: blocked ? 0 : unreadCount,
+          isBlocked: blocked,
         };
       }),
     );
@@ -194,6 +201,16 @@ export class MessagesService {
 
     if (conversation.participant1Id !== userId && conversation.participant2Id !== userId) {
       throw new ForbiddenException('Accès non autorisé');
+    }
+
+    // Refuser si l'un des participants a bloqué l'autre
+    const recipientId =
+      conversation.participant1Id === userId
+        ? conversation.participant2Id
+        : conversation.participant1Id;
+    const blocked = await this.blocksService.eitherBlocked(userId, recipientId);
+    if (blocked) {
+      throw new ForbiddenException('Impossible d\'envoyer un message : utilisateur bloqué');
     }
 
     // Créer le message

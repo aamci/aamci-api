@@ -664,4 +664,31 @@ export class AdminController {
     await this.dataPurge.purgeOldData();
     return { success: true, message: 'Purge des données exécutée avec succès' };
   }
+
+  // ─── Signalements (Reports) ───────────────────────────────────────────────
+
+  @Get('reports')
+  async listReports(
+    @Req() req,
+    @Query('status') status?: string,
+    @Query('page')   page?:   string,
+    @Query('limit')  limit?:  string,
+  ) {
+    requireAdminAccess(req.user);
+    return this.adminService.listReports({
+      status,
+      page:  page  ? parseInt(page)  : 1,
+      limit: limit ? parseInt(limit) : 20,
+    });
+  }
+
+  @Patch('reports/:id')
+  async updateReport(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() body: { status: string },
+  ) {
+    requireAdminWrite(req.user);
+    return this.adminService.updateReportStatus(id, req.user.userId, body.status);
+  }
 }

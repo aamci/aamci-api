@@ -292,6 +292,25 @@ export class AuthService {
     });
   }
 
+  async getDeletionStatus(userId: string): Promise<{ hasPendingDeletion: boolean; scheduledDeletionAt: string | null }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('Compte introuvable');
+    const scheduled = (user as any).scheduledDeletionAt as Date | null;
+    return {
+      hasPendingDeletion: !!scheduled,
+      scheduledDeletionAt: scheduled ? scheduled.toISOString() : null,
+    };
+  }
+
+  async cancelDeletion(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('Compte introuvable');
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { isActive: true, deletedAt: null, scheduledDeletionAt: null } as any,
+    });
+  }
+
   async deleteAccount(userId: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {

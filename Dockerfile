@@ -30,7 +30,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY package*.json ./
 
 EXPOSE 3000
-CMD ["node","dist/main.js"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node dist/main.js"]
 # FROM node:20-alpine AS deps
 # WORKDIR /app
 # COPY package*.json ./

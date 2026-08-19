@@ -1533,4 +1533,46 @@ export class AdminService {
     await this.logAudit(adminId, 'TOGGLE_QUESTIONNAIRE', id, 'QUESTIONNAIRE', { isActive });
     return q;
   }
+
+  // ─── Reports ─────────────────────────────────────────────────────────────
+
+  async listReports(filters: { status?: string; page?: number; limit?: number }) {
+    const page  = filters.page  ?? 1;
+    const limit = filters.limit ?? 20;
+    const skip  = (page - 1) * limit;
+    const where = filters.status ? { status: filters.status as any } : {};
+
+    const [reports, total] = await Promise.all([
+      (this.prisma as any).report.findMany({
+        where,
+        include: {
+          reporter: { select: { id: true, fullName: true, email: true, role: true, avatarUrl: true } },
+          target:   { select: { id: true, fullName: true, email: true, role: true, avatarUrl: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      (this.prisma as any).report.count({ where }),
+    ]);
+
+    return { reports, total, page, limit, pages: Math.ceil(total / limit) };
+  }
+
+  async updateReportStatus(id: string, adminId: string, status: string) {
+    const report = await (this.prisma as any).report.findUnique({ where: { id } });
+    if (!report) throw new NotFoundException('Signalement introuvable');
+
+    const updated = await (this.prisma as any).report.update({
+      where: { id },
+      data: {
+        status,
+        resolvedAt: status !== 'PENDING' ? new Date() : null,
+        resolvedBy: status !== 'PENDING' ? adminId    : null,
+      },
+    });
+
+    await this.logAudit(adminId, 'UPDATE_REPORT', id, 'REPORT', { status });
+    return updated;
+  }
 }

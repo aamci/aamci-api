@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Delete, Res, HttpCode, HttpStatus, UseGuards, Get, Req, Query, UsePipes, ValidationPipe, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Post, Delete, Patch, Res, HttpCode, HttpStatus, UseGuards, Get, Req, Query, UsePipes, ValidationPipe, BadRequestException } from '@nestjs/common';
 import { Response, Request } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
@@ -151,6 +151,20 @@ export class AuthController {
   async resetPassword(@Body() dto: ResetPasswordDto) {
     await this.auth.resetPassword(dto.token, dto.password);
     return { message: 'Mot de passe réinitialisé avec succès.' };
+  }
+
+  @Get('deletion-status')
+  @UseGuards(JwtAuthGuard)
+  async deletionStatus(@Req() req: any) {
+    return this.auth.getDeletionStatus(req.user.userId);
+  }
+
+  @Patch('cancel-deletion')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async cancelDeletion(@Req() req: any) {
+    await this.auth.cancelDeletion(req.user.userId);
+    return { success: true, message: 'Suppression annulée' };
   }
 
   @Delete('account')
