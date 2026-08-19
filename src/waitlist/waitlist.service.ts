@@ -42,10 +42,13 @@ export class WaitlistService {
     });
   }
 
-  async leave(entryId: string, patientId: string) {
+  async leave(entryId: string, userId: string) {
     const entry = await (this.prisma as any).waitlistEntry.findUnique({ where: { id: entryId } });
     if (!entry) throw new NotFoundException('Entrée introuvable');
-    if (entry.patientId !== patientId) throw new ForbiddenException('Accès refusé');
+    // Allow the patient to leave, or the doctor to remove a patient from their waitlist
+    if (entry.patientId !== userId && entry.doctorId !== userId) {
+      throw new ForbiddenException('Accès refusé');
+    }
 
     await (this.prisma as any).waitlistEntry.delete({ where: { id: entryId } });
     return { success: true };
