@@ -41,22 +41,31 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 100, ttl: 60000 } }) // Max 100 login attempts per minute (dev mode)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   async login(
     @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { access_token } = await this.auth.login(loginDto.email, loginDto.password);
+    const result = await this.auth.login(loginDto.email, loginDto.password);
 
-    // Set httpOnly cookie for same-origin requests
+    if (result.requiresTwoFactor) {
+      return { requiresTwoFactor: true, tempToken: result.tempToken };
+    }
+
+    this.setAuthCookie(res, result.access_token);
+    return { success: true, message: 'Login successful', token: result.access_token };
+  }
+
+  @Post('2fa-login')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  async loginWith2fa(
+    @Body() body: { tempToken: string; code: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { access_token } = await this.auth.loginWith2fa(body.tempToken, body.code);
     this.setAuthCookie(res, access_token);
-
-    // Also return token in body for cross-origin requests
-    return {
-      success: true,
-      message: 'Login successful',
-      token: access_token // Return token for cross-origin scenarios
-    };
+    return { success: true, message: 'Login successful', token: access_token };
   }
 
   @Post('logout')

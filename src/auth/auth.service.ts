@@ -115,11 +115,13 @@ export class AuthService {
     };
   }
 
-  async login(email: string, password: string) {
+  async login(email: string, password: string): Promise<
+    { access_token: string; requiresTwoFactor?: never } |
+    { requiresTwoFactor: true; tempToken: string; access_token?: never }
+  > {
     const user = await this.users.findByEmail(email);
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
-    // Compte en cours de suppression
     if (!user.isActive && (user as any).scheduledDeletionAt) {
       throw new UnauthorizedException(
         'Ce compte est en cours de suppression. Vos données seront effacées dans 30 jours. Contactez support@ibogha241.ga pour annuler.',
@@ -137,7 +139,108 @@ export class AuthService {
       throw new UnauthorizedException('Please verify your email before logging in. Check your inbox for the verification link.');
     }
 
+    // Check if 2FA is enabled → return a short-lived temp token instead of the real JWT
+    const twoFactor = await this.prisma.twoFactorAuth.findUnique({
+      where: { userId: user.id },
+      select: { isEnabled: true },
+    });
+
+    if (twoFactor?.isEnabled) {
+      const tempToken = this.jwt.sign(
+        { sub: user.id, email: user.email, role: user.role, twoFactorPending: true },
+        { secret: process.env.JWT_SECRET || 'changeme', expiresIn: '5m' },
+      );
+      return { requiresTwoFactor: true, tempToken };
+    }
+
     return this.sign(user.id, user.email, user.role as Role);
+  }
+
+  async loginWith2fa(tempToken: string, code: string) {
+    let payload: { sub: string; email: string; role: Role; twoFactorPending: boolean };
+    try {
+      payload = this.jwt.verify(tempToken, {
+        secret: process.env.JWT_SECRET || 'changeme',
+      }) as any;
+    } catch {
+      throw new UnauthorizedException('Session expirée. Veuillez recommencer la connexion.');
+    }
+
+    if (!payload.twoFactorPending) {
+      throw new UnauthorizedException('Token invalide');
+    }
+
+    const twoFactor = await this.prisma.twoFactorAuth.findUnique({
+      where: { userId: payload.sub },
+    });
+
+    if (!twoFactor?.isEnabled || !twoFactor.secret) {
+      throw new UnauthorizedException('2FA non configurée');
+    }
+
+    if (twoFactor.lockedUntil && twoFactor.lockedUntil > new Date()) {
+      throw new UnauthorizedException('Compte temporairement bloqué suite à trop de tentatives. Réessayez dans 15 minutes.');
+    }
+
+    const isValidTOTP = this.verifyTOTP(twoFactor.secret, code);
+
+    if (isValidTOTP) {
+      await this.prisma.twoFactorAuth.update({
+        where: { userId: payload.sub },
+        data: { lastUsedAt: new Date(), failedAttempts: 0, lockedUntil: null },
+      });
+      return this.sign(payload.sub, payload.email, payload.role);
+    }
+
+    // Check backup code
+    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
+    const backupIdx = twoFactor.backupCodes.indexOf(hashedCode);
+    if (backupIdx !== -1) {
+      const updatedCodes = [...twoFactor.backupCodes];
+      updatedCodes.splice(backupIdx, 1);
+      await this.prisma.twoFactorAuth.update({
+        where: { userId: payload.sub },
+        data: { backupCodes: updatedCodes, lastUsedAt: new Date(), failedAttempts: 0, lockedUntil: null },
+      });
+      return this.sign(payload.sub, payload.email, payload.role);
+    }
+
+    // Failed attempt
+    const newFailed = twoFactor.failedAttempts + 1;
+    const lockUntil = newFailed >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
+    await this.prisma.twoFactorAuth.update({
+      where: { userId: payload.sub },
+      data: { failedAttempts: newFailed, lockedUntil: lockUntil },
+    });
+
+    throw new UnauthorizedException(
+      lockUntil ? 'Trop de tentatives. Compte bloqué 15 minutes.' : 'Code invalide.',
+    );
+  }
+
+  private verifyTOTP(secret: string, code: string, window = 1): boolean {
+    const now = Math.floor(Date.now() / 1000);
+    const timeStep = 30;
+    for (let i = -window; i <= window; i++) {
+      const counter = Math.floor((now + i * timeStep) / timeStep);
+      if (this.generateTOTP(secret, counter) === code) return true;
+    }
+    return false;
+  }
+
+  private generateTOTP(secret: string, counter: number): string {
+    const buffer = Buffer.alloc(8);
+    buffer.writeBigInt64BE(BigInt(counter));
+    const hmac = crypto.createHmac('sha1', Buffer.from(secret, 'base64'));
+    hmac.update(buffer);
+    const hash = hmac.digest();
+    const offset = hash[hash.length - 1] & 0x0f;
+    const binary =
+      ((hash[offset] & 0x7f) << 24) |
+      ((hash[offset + 1] & 0xff) << 16) |
+      ((hash[offset + 2] & 0xff) << 8) |
+      (hash[offset + 3] & 0xff);
+    return (binary % 1_000_000).toString().padStart(6, '0');
   }
 
   async verifyEmail(token: string) {

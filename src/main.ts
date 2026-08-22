@@ -5,6 +5,7 @@ import { exec } from 'child_process';
 import * as bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import { IoAdapter } from '@nestjs/platform-socket.io';
+import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
@@ -36,6 +37,12 @@ async function bootstrap() {
   ];
 
   app.useWebSocketAdapter(new IoAdapter(app));
+
+  // Security headers
+  app.use(helmet({
+    crossOriginEmbedderPolicy: false, // needed for Socket.io
+    contentSecurityPolicy: false,     // handled by nginx
+  }));
 
   // Enable cookie parser for reading httpOnly cookies
   app.use(cookieParser());
