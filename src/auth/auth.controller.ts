@@ -45,8 +45,11 @@ export class AuthController {
   async login(
     @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) res: Response,
+    @Req() req: any,
   ) {
-    const result = await this.auth.login(loginDto.email, loginDto.password);
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ?? req.ip;
+    const ua = req.headers['user-agent'];
+    const result = await this.auth.login(loginDto.email, loginDto.password, ip, ua);
 
     if (result.requiresTwoFactor) {
       return { requiresTwoFactor: true, tempToken: result.tempToken };

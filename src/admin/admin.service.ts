@@ -1575,4 +1575,81 @@ export class AdminService {
     await this.logAudit(adminId, 'UPDATE_REPORT', id, 'REPORT', { status });
     return updated;
   }
+
+  // ─── Auth Logs ───────────────────────────────────────────────────────────
+
+  async getAuthLogs({ page = 1, limit = 50, success, search }: {
+    page?: number; limit?: number; success?: boolean; search?: string;
+  }) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+    if (success !== undefined) where.success = success;
+    if (search) where.email = { contains: search, mode: 'insensitive' };
+
+    const [logs, total] = await Promise.all([
+      (this.prisma as any).authLog.findMany({
+        where,
+        include: { user: { select: { id: true, fullName: true, role: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      (this.prisma as any).authLog.count({ where }),
+    ]);
+
+    return { logs, total, page, limit, pages: Math.ceil(total / limit) };
+  }
+
+  // ─── Scripts de maintenance ───────────────────────────────────────────────
+
+  async runScript(name: string, adminId: string) {
+    const scripts: Record<string, () => Promise<any>> = {
+      'purge-old-data': async () => {
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const [authLogs, auditLogs] = await Promise.all([
+          (this.prisma as any).authLog.deleteMany({ where: { createdAt: { lt: thirtyDaysAgo } } }),
+          this.prisma.adminAuditLog.deleteMany({ where: { createdAt: { lt: thirtyDaysAgo } } }),
+        ]);
+        return { deleted: { authLogs: authLogs.count, auditLogs: auditLogs.count } };
+      },
+      'reset-failed-logins': async () => {
+        const result = await this.prisma.twoFactorAuth.updateMany({
+          where: { failedAttempts: { gt: 0 } },
+          data: { failedAttempts: 0, lockedUntil: null },
+        });
+        return { updated: result.count };
+      },
+      'db-health': async () => {
+        const [users, appointments, transactions] = await Promise.all([
+          this.prisma.user.count(),
+          this.prisma.appointment.count(),
+          this.prisma.transaction.count(),
+        ]);
+        return { users, appointments, transactions, timestamp: new Date().toISOString() };
+      },
+      'clear-unverified-accounts': async () => {
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const result = await this.prisma.user.deleteMany({
+          where: { emailVerified: false, createdAt: { lt: sevenDaysAgo } },
+        });
+        return { deleted: result.count };
+      },
+      'count-auth-logs': async () => {
+        const [total, failures, last24h] = await Promise.all([
+          (this.prisma as any).authLog.count(),
+          (this.prisma as any).authLog.count({ where: { success: false } }),
+          (this.prisma as any).authLog.count({ where: { createdAt: { gte: new Date(Date.now() - 86400000) } } }),
+        ]);
+        return { total, failures, last24h };
+      },
+    };
+
+    if (!scripts[name]) {
+      throw new NotFoundException(`Script "${name}" non reconnu. Scripts disponibles: ${Object.keys(scripts).join(', ')}`);
+    }
+
+    const result = await scripts[name]();
+    await this.logAudit(adminId, 'RUN_SCRIPT', null, 'SYSTEM', { script: name, result });
+    return { success: true, script: name, result };
+  }
 }

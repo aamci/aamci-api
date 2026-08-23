@@ -115,27 +115,44 @@ export class AuthService {
     };
   }
 
-  async login(email: string, password: string): Promise<
+  async login(email: string, password: string, ipAddress?: string, userAgent?: string): Promise<
     { access_token: string; requiresTwoFactor?: never } |
     { requiresTwoFactor: true; tempToken: string; access_token?: never }
   > {
+    const logAuth = async (userId: string | null, success: boolean, reason: string) => {
+      try {
+        await (this.prisma as any).authLog.create({
+          data: { userId, email, success, ipAddress, userAgent, reason },
+        });
+      } catch {}
+    };
+
     const user = await this.users.findByEmail(email);
-    if (!user) throw new UnauthorizedException('Invalid credentials');
+    if (!user) {
+      await logAuth(null, false, 'USER_NOT_FOUND');
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     if (!user.isActive && (user as any).scheduledDeletionAt) {
+      await logAuth(user.id, false, 'ACCOUNT_SCHEDULED_DELETION');
       throw new UnauthorizedException(
         'Ce compte est en cours de suppression. Vos données seront effacées dans 30 jours. Contactez support@ibogha241.ga pour annuler.',
       );
     }
 
     if (!user.password) {
+      await logAuth(user.id, false, 'SOCIAL_LOGIN_ONLY');
       throw new UnauthorizedException('Please use social login (Google or Facebook)');
     }
 
     const ok = await this.users.validatePassword(user.password, password);
-    if (!ok) throw new UnauthorizedException('Invalid credentials');
+    if (!ok) {
+      await logAuth(user.id, false, 'INVALID_PASSWORD');
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     if (!user.emailVerified) {
+      await logAuth(user.id, false, 'EMAIL_NOT_VERIFIED');
       throw new UnauthorizedException('Please verify your email before logging in. Check your inbox for the verification link.');
     }
 
@@ -146,6 +163,7 @@ export class AuthService {
     });
 
     if (twoFactor?.isEnabled) {
+      await logAuth(user.id, true, '2FA_PENDING');
       const tempToken = this.jwt.sign(
         { sub: user.id, email: user.email, role: user.role, twoFactorPending: true },
         { secret: process.env.JWT_SECRET || 'changeme', expiresIn: '5m' },
@@ -153,6 +171,7 @@ export class AuthService {
       return { requiresTwoFactor: true, tempToken };
     }
 
+    await logAuth(user.id, true, 'SUCCESS');
     return this.sign(user.id, user.email, user.role as Role);
   }
 

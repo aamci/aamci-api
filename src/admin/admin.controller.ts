@@ -656,6 +656,25 @@ export class AdminController {
     return this.adminService.unlock2faForUser(id);
   }
 
+  // ─── Auth Logs ───────────────────────────────────────────────────────────
+
+  @Get('auth-logs')
+  async getAuthLogs(
+    @Req() req,
+    @Query('page')    page?:    string,
+    @Query('limit')   limit?:   string,
+    @Query('success') success?: string,
+    @Query('search')  search?:  string,
+  ) {
+    requireAdminAccess(req.user);
+    return this.adminService.getAuthLogs({
+      page:    page    ? parseInt(page)  : 1,
+      limit:   limit   ? parseInt(limit) : 50,
+      success: success === 'true' ? true : success === 'false' ? false : undefined,
+      search,
+    });
+  }
+
   // ─── Maintenance ─────────────────────────────────────────────────────────
 
   @Post('maintenance/purge')
@@ -663,6 +682,12 @@ export class AdminController {
     requireAdminWrite(req.user);
     await this.dataPurge.purgeOldData();
     return { success: true, message: 'Purge des données exécutée avec succès' };
+  }
+
+  @Post('scripts/:name')
+  async runScript(@Req() req, @Param('name') name: string) {
+    requireAdminWrite(req.user);
+    return this.adminService.runScript(name, req.user.id);
   }
 
   // ─── Signalements (Reports) ───────────────────────────────────────────────
