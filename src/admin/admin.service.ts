@@ -1649,7 +1649,7 @@ export class AdminService {
     }
 
     const result = await scripts[name]();
-    await this.logAudit(adminId, 'RUN_SCRIPT', null, 'SYSTEM', { script: name, result });
+    await this.logAudit(adminId, 'RUN_SCRIPT', undefined, 'SYSTEM', { script: name, result });
     return { success: true, script: name, result };
   }
 }
