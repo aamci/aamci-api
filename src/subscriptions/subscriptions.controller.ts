@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Req, UseGuards } from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SubscriptionPlan, SubscriptionAddOn } from '@prisma/client';
 
 @UseGuards(JwtAuthGuard)
