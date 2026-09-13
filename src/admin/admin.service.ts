@@ -234,15 +234,11 @@ export class AdminService {
   }
 
   async setUserPassword(id: string, password: string, adminId: string) {
-    const ADMIN_ROLES = ['ADMIN', 'ADMIN_READ', 'ADMIN_WRITE', 'GUEST'];
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: { id: true, email: true, fullName: true, role: true },
     });
     if (!user) throw new NotFoundException('Utilisateur non trouvé');
-    if (!ADMIN_ROLES.includes(user.role)) {
-      throw new ForbiddenException('Cette action est réservée aux utilisateurs avec un rôle admin');
-    }
     const hash = await argon2.hash(password);
     await this.prisma.user.update({ where: { id }, data: { password: hash } as any });
     await this.logAudit(adminId, 'SET_PASSWORD', id, 'USER', { email: user.email });
