@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { EmailService } from '../common/email.service';
 import { getEncryptionCoverage } from '../common/prisma-encryption.extension';
@@ -231,6 +231,22 @@ export class AdminService {
 
     await this.logAudit(adminId, 'RESET_PASSWORD', id, 'USER', { email: user.email });
     return { success: true, message: 'Mot de passe temporaire envoyé par email.' };
+  }
+
+  async setUserPassword(id: string, password: string, adminId: string) {
+    const ADMIN_ROLES = ['ADMIN', 'ADMIN_READ', 'ADMIN_WRITE', 'GUEST'];
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email: true, fullName: true, role: true },
+    });
+    if (!user) throw new NotFoundException('Utilisateur non trouvé');
+    if (!ADMIN_ROLES.includes(user.role)) {
+      throw new ForbiddenException('Cette action est réservée aux utilisateurs avec un rôle admin');
+    }
+    const hash = await argon2.hash(password);
+    await this.prisma.user.update({ where: { id }, data: { password: hash } as any });
+    await this.logAudit(adminId, 'SET_PASSWORD', id, 'USER', { email: user.email });
+    return { success: true, message: 'Mot de passe mis à jour.' };
   }
 
   async verifyUserEmail(id: string, adminId: string) {

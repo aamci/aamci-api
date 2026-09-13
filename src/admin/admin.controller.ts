@@ -11,6 +11,7 @@ import {
   UseGuards,
   Req,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { DataPurgeService } from '../common/data-purge.service';
@@ -108,6 +109,13 @@ export class AdminController {
   async resetUserPassword(@Req() req, @Param('id') id: string) {
     requireAdminWrite(req.user);
     return this.adminService.resetUserPassword(id, req.user.userId);
+  }
+
+  @Post('users/:id/set-password')
+  async setUserPassword(@Req() req, @Param('id') id: string, @Body('password') password: string) {
+    if (req.user.role !== 'ADMIN') throw new ForbiddenException('Réservé aux ADMIN');
+    if (!password || password.length < 8) throw new BadRequestException('Le mot de passe doit contenir au moins 8 caractères');
+    return this.adminService.setUserPassword(id, password, req.user.userId);
   }
 
   @Post('users/:id/verify-email')

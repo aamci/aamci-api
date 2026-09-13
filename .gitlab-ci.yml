@@ -77,12 +77,38 @@ build:api:preprod:
 
 # ── Deploy — prod ─────────────────────────────────────────────────────────────
 
+sync:infra:
+  stage: deploy
+  tags:
+    - docker
+  image: alpine:3.19
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "preprod"
+  before_script:
+    - apk add --no-cache openssh-client rsync bash
+    - eval $(ssh-agent -s)
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - cat "$SSH_PRIVATE_KEY" > /tmp/id_deploy
+    - echo >> /tmp/id_deploy
+    - chmod 600 /tmp/id_deploy
+    - ssh-add /tmp/id_deploy
+    - ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+  script:
+    - ssh "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p $DEPLOY_DIR/infra/scripts $DEPLOY_DIR/infra/docker"
+    - rsync -az --chmod=u+x infra/scripts/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/infra/scripts/"
+    - rsync -az infra/docker/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/infra/docker/"
+    - |
+      for f in docker-compose.prod.yml docker-compose.preprod.yml; do
+        [ -f "infra/$f" ] && rsync -az "infra/$f" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/infra/$f" || true
+      done
+
 deploy:api:
   stage: deploy
   tags:
     - docker
   image: alpine:3.19
-  needs: ["build:api"]
+  needs: ["build:api", "sync:infra"]
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   environment:
@@ -101,7 +127,7 @@ deploy:api:preprod:
   tags:
     - docker
   image: alpine:3.19
-  needs: ["build:api:preprod"]
+  needs: ["build:api:preprod", "sync:infra"]
   rules:
     - if: $CI_COMMIT_BRANCH == "preprod"
   environment:
