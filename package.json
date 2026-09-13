@@ -27,7 +27,6 @@
     "@nestjs/platform-socket.io": "^10.4.22",
     "@nestjs/schedule": "^6.1.1",
     "@nestjs/throttler": "^5.2.0",
-    "helmet": "^8.0.0",
     "@nestjs/websockets": "^10.4.22",
     "@prisma/client": "^6.17.1",
     "@types/multer": "^2.1.0",
@@ -37,6 +36,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "cookie-parser": "^1.4.7",
+    "helmet": "^8.0.0",
     "minio": "^8.0.7",
     "multer": "^2.1.1",
     "node-fetch": "2",
@@ -46,6 +46,7 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.1.13",
+    "resend": "^6.24.0",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.3",
     "stripe": "^19.3.1"

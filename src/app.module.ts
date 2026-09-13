@@ -58,6 +58,7 @@ import { BeneficiariesModule } from './beneficiaries/beneficiaries.module';
 import { CleanupModule } from './cleanup/cleanup.module';
 import { ReportsModule } from './reports/reports.module';
 import { BlocksModule } from './blocks/blocks.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -114,6 +115,7 @@ import { BlocksModule } from './blocks/blocks.module';
     CleanupModule,
     ReportsModule,
     BlocksModule,
+    SubscriptionsModule,
   ],
   controllers: [HealthController],
   providers: [
