@@ -4,12 +4,13 @@ import { Resend } from 'resend';
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private resend: Resend;
+  private resend: Resend | null = null;
   private readonly from = process.env.RESEND_FROM || 'Ibogha Santé <no-reply@ibogha241.ga>';
 
   constructor() {
-    this.resend = new Resend(process.env.RESEND_API_KEY);
-    if (!process.env.RESEND_API_KEY) {
+    if (process.env.RESEND_API_KEY) {
+      this.resend = new Resend(process.env.RESEND_API_KEY);
+    } else {
       this.logger.warn('RESEND_API_KEY non configuré — les emails ne seront pas envoyés');
     }
   }
@@ -27,6 +28,10 @@ export class EmailService {
   }
 
   private async send(to: string, subject: string, html: string): Promise<{ success: boolean; id?: string }> {
+    if (!this.resend) {
+      this.logger.warn(`Email skipped (no API key): ${subject} → ${to}`);
+      return { success: false };
+    }
     const { data, error } = await this.resend.emails.send({
       from: this.from,
       to,
